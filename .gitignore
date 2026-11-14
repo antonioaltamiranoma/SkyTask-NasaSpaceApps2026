@@ -232,6 +232,11 @@ generator/cache/
 generator/export/
 generator/test_run/
 generator/_vm_test_junk/
+generator/sample_data/
+# Service local files (settings may point at private data; sqlite holds answers)
+service/.venv/
+service/settings.local.toml
+service/local_service.sqlite3*
 *.sqlite
 *.sqlite3
 *.db

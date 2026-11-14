@@ -1,0 +1,27 @@
+# Sky Task service - local settings.
+# start_local copies this file to settings.local.toml (gitignored) on first run; edit that copy.
+# Relative paths are relative to this file's folder (service/).
+
+[local]
+# The generator's data folder (it holds skytask.sqlite3 and masters/). The service only READS it.
+# Default assumes the repo is cloned inside the Nasa2026 folder, next to the generator:
+#   Nasa2026/generator/sample_data   and   Nasa2026/SkyTask-NasaSpaceApps2026/service
+# sample_data = a copy of the generator's test database (26 controls, 16 fields, no science yet).
+# Once your own generator has made tasks, switch to its data folder:
+#   generator_data_dir = "../../generator/data"
+generator_data_dir = "../../generator/sample_data"
+service_db = "local_service.sqlite3"   # the service's own sessions/answers (never the generator's db)
+static_dir = "../explorer"             # served at http://localhost:8080/
+
+[serving]
+challenge_ttl_s = 600
+pool_refresh_s = 30      # re-read the generator's active tasks this often (it keeps adding)
+science_share = 0.5      # at most this share of unsettled science per challenge (CLAUDE.md)
+recheck_rate = 0.05      # settled science still served as re-checks
+
+[http]
+cors_origins = ["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5000", "http://127.0.0.1:5000"]
+
+[site_keys.local-demo]
+max_count = 10
+modes = ["none", "score", "token"]

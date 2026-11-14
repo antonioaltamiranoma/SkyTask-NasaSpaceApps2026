@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Task demo form</title>
+<link rel="icon" href="assets/sky-task-logo.svg">
+<link rel="stylesheet" href="assets/site.css">
+<script src="/widget/sky-task.js" defer></script>
+<style>
+  .grid { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 32px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  form.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; }
+  form.card h2 { margin: 0; }
+  label { display: grid; gap: 4px; font-size: .875rem; font-weight: 600; }
+  input[type=text], input[type=email] {
+    font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit;
+  }
+  .submit { font: inherit; font-weight: 650; padding: 12px; border-radius: 8px; border: 0; background: var(--ink); color: var(--paper); cursor: pointer; }
+  .submit:disabled { opacity: .4; cursor: not-allowed; }
+  fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px 12px; margin: 0 0 16px; }
+  fieldset label { display: flex; gap: 8px; font-weight: 400; align-items: baseline; }
+  legend { font-weight: 650; font-size: .875rem; padding: 0 4px; }
+  .log { font: .8125rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--paper); border: 1px solid var(--line);
+         border-radius: 10px; padding: 12px; min-height: 120px; max-height: 280px; overflow: auto; white-space: pre-wrap; margin: 0; }
+  .sent { font-size: .875rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./"><img src="assets/sky-task-logo.svg" alt="">Sky Task</a>
+  <nav aria-label="Demo pages">
+    <a href="./" aria-current="page">Sign-up form</a>
+    <a href="game.html">Game</a>
+    <a href="inspector.html">Inspector</a>
+  </nav>
+  <span class="api">API: <span data-api-label></span></span>
+</header>
+
+<main class="wrap">
+  <h1>A sign-up form with Sky Task in it</h1>
+  <p class="lede">This is a demo page. The form below is fake and sends nothing anywhere. It shows how a site drops in the <code>&lt;sky-task&gt;</code> widget with one script tag and one element, the way it would add a CAPTCHA box.</p>
+
+  <div class="grid">
+    <form class="card" id="signup" novalidate>
+      <h2>Join the observers' newsletter</h2>
+      <label>Name <input type="text" name="name" autocomplete="name" value="Ada"></label>
+      <label>Email <input type="email" name="email" autocomplete="email" value="ada@example.com"></label>
+      <sky-task id="w" site-key="demo" count="2" result="none"></sky-task>
+      <button class="submit" type="submit" id="go">Sign up</button>
+      <p class="sent" id="sent" hidden></p>
+    </form>
+
+    <section aria-labelledby="h-mode">
+      <fieldset id="mode">
+        <legend id="h-mode">What the site gets back</legend>
+        <label><input type="radio" name="mode" value="none" checked> Nothing, answers are only recorded (science)</label>
+        <label><input type="radio" name="mode" value="score"> A score from 0 to 100% (games)</label>
+        <label><input type="radio" name="mode" value="token"> A pass token, CAPTCHA style (future work, card #9)</label>
+      </fieldset>
+      <h2>Events from the widget</h2>
+      <pre class="log" id="log" aria-live="polite">Waiting for the widget…</pre>
+    </section>
+  </div>
+</main>
+
+<script src="assets/config.js"></script>
+<script>
+  const w = document.getElementById("w");
+  const go = document.getElementById("go");
+  const log = document.getElementById("log");
+  const sent = document.getElementById("sent");
+  const lines = [];
+  const add = (s) => { lines.unshift(new Date().toLocaleTimeString() + "  " + s); log.textContent = lines.slice(0, 30).join("\n"); };
+  const refresh = () => { go.disabled = w.getAttribute("result") === "token" && !w.getResponse(); };
+
+  w.addEventListener("sky-task-result", (e) => { add("sky-task-result " + JSON.stringify(e.detail)); refresh(); });
+  w.addEventListener("sky-task-error", (e) => add("sky-task-error " + JSON.stringify(e.detail)));
+  document.getElementById("mode").addEventListener("change", (e) => {
+    w.setAttribute("result", e.target.value); sent.hidden = true; add("result=\"" + e.target.value + "\""); refresh();
+  });
+  document.getElementById("signup").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const tok = new FormData(e.target).get("sky-task-token");
+    sent.hidden = false;
+    sent.textContent = tok
+      ? "Demo only: the form would send the token to your server, which checks it with /siteverify."
+      : "Demo only: nothing was sent.";
+  });
+  refresh();
+</script>
+</body>
+</html>

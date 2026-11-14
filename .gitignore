@@ -218,3 +218,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# --- Sky Task ---
+# Credentials: never commit service-account or API keys
+*-key.json
+serviceAccount*.json
+service-account*.json
+firebase-adminsdk*.json
+.env.*
+# Generator local data (large, regenerated)
+generator/data/
+generator/cache/
+generator/export/
+generator/test_run/
+generator/_vm_test_junk/
+*.sqlite
+*.sqlite3
+*.db
+*.fits
+# Web tooling
+node_modules/
+.firebase/

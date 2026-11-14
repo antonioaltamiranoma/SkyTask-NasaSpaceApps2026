@@ -1,0 +1,154 @@
+openapi: 3.1.0
+info:
+  title: Sky Task API
+  version: 0.1.0
+  description: |
+    Serves blink micro-tasks built from NASA SPHEREx data, records answers and computes consensus.
+    Rules (see CLAUDE.md): the browser never learns task kinds, answers, coordinates, absolute times or
+    field ids; images are request-time variants of stored master strips; every challenge has >= 1 control
+    and at most 50% unsettled science tasks; one task per field per participant.
+servers:
+  - url: https://SERVICE_URL/v1
+paths:
+  /sessions:
+    post:
+      summary: Start an anonymous participant session for a host site.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [site_key], properties: {site_key: {type: string}}}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {type: object, properties: {session_id: {type: string}}}
+  /challenge:
+    post:
+      summary: Get a challenge (a set of tasks) for a session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [session_id]
+              properties:
+                session_id: {type: string}
+                count: {type: integer, minimum: 2, maximum: 10, default: 2, description: "Capped by the site key."}
+                result: {type: string, enum: [none, score, token], default: none, description: "Capped by the site key."}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge_id: {type: string}
+                  expires_at: {type: string, format: date-time}
+                  tasks:
+                    type: array
+                    items: {$ref: '#/components/schemas/PublicTask'}
+  /challenge/{challenge_id}/image/{task_ref}:
+    get:
+      summary: The PNG sprite strip for one task of a challenge (a fresh variant, generated at request time).
+      parameters:
+        - {name: challenge_id, in: path, required: true, schema: {type: string}}
+        - {name: task_ref, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: PNG, frames side by side, each frame_size x frame_size px. No metadata chunks.
+          content: {image/png: {}}
+  /challenge/{challenge_id}/submit:
+    post:
+      summary: Submit all answers of a challenge. Timing is measured server-side.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [answers]
+              properties:
+                answers:
+                  type: array
+                  items:
+                    type: object
+                    required: [task_ref, choice]
+                    properties:
+                      task_ref: {type: string}
+                      choice: {type: string, enum: [moving, not_moving]}
+      responses:
+        '200':
+          description: Depends on the challenge's result mode.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - {type: object, properties: {recorded: {type: boolean}}}
+                  - {type: object, properties: {score: {type: integer, enum: [0, 25, 50, 75, 100]}}}
+                  - {type: object, properties: {passed: {type: boolean}, token: {type: string}, next_challenge_id: {type: string}}}
+  /siteverify:
+    post:
+      summary: Host site's server checks a token with its secret key (P2).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {type: object, required: [secret, token], properties: {secret: {type: string}, token: {type: string}}}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: {type: boolean}
+                  challenge_ts: {type: string, format: date-time}
+                  hostname: {type: string}
+                  error_codes: {type: array, items: {type: string}}
+  /fields:
+    get:
+      summary: Processed fields for the public sky explorer (no answer keys).
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/FieldSummary'}}
+  /stats:
+    get:
+      summary: Totals for the explorer and the pitch.
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  answers: {type: integer}
+                  participants: {type: integer}
+                  holdout_correct: {type: integer}
+                  holdout_total: {type: integer}
+                  candidates_open: {type: integer}
+                  candidates_confirmed: {type: integer}
+                  candidates_rejected: {type: integer}
+components:
+  schemas:
+    PublicTask:
+      type: object
+      description: Everything a browser may know about a task. Nothing here may depend on its kind.
+      properties:
+        task_ref: {type: string, description: "Opaque, valid only inside this challenge."}
+        image_url: {type: string}
+        frame_count: {type: integer}
+        frame_size: {type: integer}
+        highlight: {type: object, properties: {x: {type: number}, y: {type: number}, r: {type: number}}}
+        frame_offsets_h: {type: array, items: {type: number}, description: "Hours since the first frame, rounded to 0.5 h."}
+        options: {type: array, items: {type: string, enum: [moving, not_moving]}}
+    FieldSummary:
+      type: object
+      properties:
+        field_id: {type: string}
+        frame_count: {type: integer}
+        known_objects: {type: array, items: {type: string}}
+        candidates: {type: array, items: {type: object, properties: {status: {type: string, enum: [open, confirmed, rejected, known]}}}}

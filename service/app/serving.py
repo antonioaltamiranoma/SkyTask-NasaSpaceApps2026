@@ -2,7 +2,8 @@
 
 Rules (CLAUDE.md):
 - every challenge has >= 1 control and at most `science_share` (50%) unsettled science tasks;
-- science: uncertain first (few weighted votes, score near 0.5); settled science only as ~5% re-checks;
+- science: uncertain first (few weighted votes, score near 0.5); settled science only as re-checks, drawn with
+  probability recheck_rate (~5%) per free slot;
 - controls: Moving / Not moving by a fair coin per slot (so the mix never hints at the answers);
 - one task per field per participant (and so also within a challenge);
 - final order shuffled.
@@ -29,8 +30,7 @@ def pick_tasks(pool, consensus, seen_fields, count, rng, science_share=0.5, rech
     avail = [t for t in pool if t["field_id"] not in used]
     science = [t for t in avail if t["kind"] == "science"]
     unsettled = [t for t in science if settled_answer(t["task_id"], consensus) is None]
-    rechecks = [t for t in science if settled_answer(t["task_id"], consensus) is not None
-                and rng.random() < recheck_rate]
+    rechecks = [t for t in science if settled_answer(t["task_id"], consensus) is not None]
 
     def priority(t):
         c = consensus.get(t["task_id"]) or {}
@@ -54,11 +54,16 @@ def pick_tasks(pool, consensus, seen_fields, count, rng, science_share=0.5, rech
             break
         if t["field_id"] not in used:
             take(t, None)
-    for t in rechecks:
-        if len(chosen) >= max_science:
+    # re-checks: each remaining non-control slot becomes a settled task with probability recheck_rate (~5%),
+    # independent of how many settled tasks exist
+    free = (t for t in rechecks)
+    for _ in range(max_science - len(chosen)):
+        if rng.random() >= recheck_rate:
+            continue
+        t = next((t for t in free if t["field_id"] not in used), None)
+        if t is None:
             break
-        if t["field_id"] not in used:
-            take(t, settled_answer(t["task_id"], consensus))
+        take(t, settled_answer(t["task_id"], consensus))
 
     controls = {k: [t for t in avail if t["kind"] == k] for k in ("control_pos", "control_neg")}
     n_controls = 0

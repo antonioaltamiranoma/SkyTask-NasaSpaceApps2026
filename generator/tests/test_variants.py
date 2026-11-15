@@ -55,7 +55,8 @@ class TestVariants(unittest.TestCase):
                 gy, gx = np.mgrid[0:box.shape[0], 0:box.shape[1]]
                 yy, xx = y0 + (w * gy).sum() / w.sum(), x0 + (w * gx).sum() / w.sum()
                 ex, ey = (hl["x"], hl["y"]) if i == 0 else dbg["track"][i]
-                self.assertLessEqual(np.hypot(xx - ex, yy - ey), 1.0,
+                tol = 1.75 if i == 0 else 1.0  # highlight is rounded to whole pixels (+-0.71 px)
+                self.assertLessEqual(np.hypot(xx - ex, yy - ey), tol,
                                      f"seed {s} frame {i}: peak ({xx},{yy}) vs expected ({ex:.1f},{ey:.1f}) k={dbg['k']} flip={dbg['flip']}")
             # placement rule: ring and track stay inside [edge, win-edge] (mirrored by flips -> [edge-1, win-edge])
             for (x, y) in [(hl["x"], hl["y"])] + list(dbg["track"]):
@@ -81,6 +82,15 @@ class TestVariants(unittest.TestCase):
         png, hl = make_variant(buf.getvalue(), meta, np.random.default_rng(1))
         self.assertTrue(png.startswith(b"\x89PNG"))
         self.assertEqual(set(hl), {"x", "y", "r"})
+
+    def test_highlight_whole_pixels(self):
+        """The ring's sub-pixel fraction must not survive into the public highlight (task fingerprint)."""
+        arr, meta = synthetic(rng=np.random.default_rng(7))
+        meta["ring"] = [meta["ring"][0] + 0.37, meta["ring"][1] + 0.21]
+        for s in range(50):
+            _, hl = make_variant(arr, meta, np.random.default_rng(s))
+            self.assertIsInstance(hl["x"], int)
+            self.assertIsInstance(hl["y"], int)
 
 
 if __name__ == "__main__":

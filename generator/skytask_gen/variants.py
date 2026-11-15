@@ -95,7 +95,8 @@ def make_variant_debug(master, meta, rng):
     buf = io.BytesIO()
     Image.fromarray(strip).save(buf, format="PNG")  # uint8 2-D -> mode "L" (mode= is deprecated in Pillow 11.3+)
     hx_, hy_ = transform_point(ring[0] - u0, ring[1] - v0, win, k, flip)
-    highlight = {"x": round(float(hx_), 1), "y": round(float(hy_), 1), "r": int(meta.get("ring_radius_px", 4))}
+    # whole pixels: the ring's sub-pixel fraction is the same in every variant of a task and would fingerprint it
+    highlight = {"x": int(round(float(hx_))), "y": int(round(float(hy_))), "r": int(meta.get("ring_radius_px", 4))}
     track = [transform_point(p[0] - u0, p[1] - v0, win, k, flip) for p in (meta.get("track") or [])]
     return buf.getvalue(), highlight, {"origin": (u0, v0), "k": k, "flip": flip, "track": track}
 

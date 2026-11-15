@@ -12,6 +12,7 @@
 generator_data_dir = "../../generator/sample_data"
 service_db = "local_service.sqlite3"   # the service's own sessions/answers (never the generator's db)
 static_dir = "../explorer"             # served at http://localhost:8080/
+widget_dir = "../widget"               # served at http://localhost:8080/widget/ (sky-task.js)
 
 [serving]
 challenge_ttl_s = 600

@@ -64,6 +64,22 @@ def test_settled_only_as_rechecks(pool):
     assert sum(k.startswith("control") for k in kinds(picked)) >= 1
 
 
+def test_recheck_rate_with_large_settled_pool():
+    from conftest import make_pool
+    tasks, _ = make_pool(n_control_fields=12, n_science=0)
+    for j in range(300):
+        tasks.append({"task_id": f"set{j}", "field_id": f"SS{j}", "kind": "science", "holdout": False})
+    cons = {f"set{j}": {"status": "rejected", "score": 0.1, "weighted_votes": 9} for j in range(300)}
+    served = settled = 0
+    for seed in range(2000):
+        picked = pick_tasks(tasks, cons, set(), 4, np.random.default_rng(seed), recheck_rate=0.05)
+        served += len(picked)
+        settled += sum(s is not None for _, s in picked)
+    share = settled / served
+    # 3 free slots x 5% / 4 tasks = 3.75% expected; was 75% before the fix
+    assert 0.025 < share < 0.05, share
+
+
 def test_controls_balanced(pool):
     tasks, _ = pool
     c = {"control_pos": 0, "control_neg": 0}

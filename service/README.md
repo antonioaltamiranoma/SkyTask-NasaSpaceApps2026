@@ -11,7 +11,7 @@ cloud (Cloud Run + Firestore + private Cloud Storage come with cards #3/#4).
 2. Double-click `service\start_local.bat`. The first run creates `service\.venv`, installs the requirements and
    copies `settings.local.example.toml` to `settings.local.toml` (yours to edit; gitignored).
 3. Open <http://localhost:8080/docs> (interactive API) or <http://localhost:8080/> (the website in `explorer/`,
-   built by card #7).
+   built by card #7; the widget script is served from `widget/` at `/widget/sky-task.js`).
 
 Linux/macOS/WSL: `service/start_local.sh`.
 
@@ -28,14 +28,14 @@ generator's database (SQLite `query_only`); its own sessions and answers live in
 | --- | --- | --- |
 | POST | `/sessions` | `{site_key}` → `{session_id}`. Local site key: `local-demo`. |
 | POST | `/challenge` | `{session_id, count 2–10, result none/score/token}` → public tasks only. `token` → 501 until card #9. 503 `not_enough_tasks` when this participant has seen every field (start a new session). |
-| GET | `/challenge/{id}/image/{task_ref}` | PNG strip, frames side by side. Same image on reload (it has to match the ring already sent); a new challenge gets a new random crop/rotation/flip. |
+| GET | `/challenge/{id}/image/{task_ref}` | PNG strip, frames side by side. Rendered once per challenge and cached until it expires (same image on reload: it has to match the ring already sent); a new challenge gets a new random crop/rotation/flip. |
 | POST | `/challenge/{id}/submit` | All answers at once, once. `none` → `{recorded}`, `score` → `{score: 0/25/50/75/100}`. |
 | GET | `/dev/challenge/{id}`, `/dev/pool` | **Only with `SKYTASK_DEV=1`** (start_local sets it). What was served and why: kinds, fields, answers, mix, variant. Refuses to start on Cloud Run. |
 
 ## How serving and scoring work (CLAUDE.md rules)
 
 - `app/serving.py`: up to 50% unsettled science (most uncertain first: fewest weighted votes, then score nearest
-  0.5); settled science only as ~5% re-checks; the rest controls, Moving/Not moving by coin flip; one task per field
+  0.5); settled science only as re-checks (each free slot has a ~5% chance); the rest controls, Moving/Not moving by coin flip; one task per field
   per participant; order shuffled. Settings in `[serving]`.
 - Scoring: controls by correctness; settled science by agreement with consensus; unsettled science by random draw;
   rounded to 25% steps. Only non-holdout controls update the participant's reliability (prior α=3, β=1).

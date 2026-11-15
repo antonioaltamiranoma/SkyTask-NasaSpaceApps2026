@@ -30,6 +30,7 @@ class Settings:
     generator_data_dir: Path = SERVICE_DIR / "../../generator/data"
     service_db: Path = SERVICE_DIR / "local_service.sqlite3"
     static_dir: Path | None = REPO_DIR / "explorer"
+    widget_dir: Path | None = REPO_DIR / "widget"
     cors_origins: list = field(default_factory=lambda: ["http://localhost:8080", "http://127.0.0.1:8080"])
     site_keys: dict = field(default_factory=lambda: {"local-demo": SiteKey(10, ("none", "score", "token"))})
     challenge_ttl_s: int = 600
@@ -62,8 +63,9 @@ def load_settings(path: str | os.PathLike | None = None) -> Settings:
             s.generator_data_dir = _resolve(base, local["generator_data_dir"])
         if "service_db" in local:
             s.service_db = _resolve(base, local["service_db"])
-        if "static_dir" in local:
-            s.static_dir = _resolve(base, local["static_dir"]) if local["static_dir"] else None
+        for k in ("static_dir", "widget_dir"):
+            if k in local:
+                setattr(s, k, _resolve(base, local[k]) if local[k] else None)
         srv = raw.get("serving", {})
         for k in ("challenge_ttl_s", "pool_refresh_s", "science_share", "recheck_rate"):
             if k in srv:

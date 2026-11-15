@@ -16,7 +16,9 @@ PUBLIC_KEYS = {"task_ref", "image_url", "frame_count", "frame_size", "highlight"
 
 def make_client(tmp_path, dev=False, store=None, **kw):
     tasks, masters = make_pool()
-    s = Settings(service_db=tmp_path / "svc.sqlite3", static_dir=None, dev=dev,
+    kw.setdefault("static_dir", None)
+    kw.setdefault("widget_dir", None)
+    s = Settings(service_db=tmp_path / "svc.sqlite3", dev=dev,
                  site_keys={"k": SiteKey(10, ("none", "score", "token")), "narrow": SiteKey(3, ("none",))}, **kw)
     app = create_app(s, store or FakeStore(tasks, masters))
     return TestClient(app), app, tasks
@@ -109,6 +111,8 @@ def test_one_task_per_field_across_challenges(tmp_path):
         r = c.post("/v1/challenge", json={"session_id": sid, "count": 2})
         if r.status_code != 200:
             assert r.status_code == 503 and r.json()["detail"]["error"] == "not_enough_tasks"
+            msg = r.json()["detail"]["message"]
+            assert msg == "no more tasks for this session" and not any(ch.isdigit() for ch in msg)
             break
         seen += [app.state.store.get(x["task_id"])["field_id"]
                  for x in app.state.db.challenge_tasks(r.json()["challenge_id"])]
@@ -156,7 +160,13 @@ def test_dev_routes_shape(tmp_path):
     assert [t["task_ref"] for t in d["tasks"]] == [t["task_ref"] for t in ch["tasks"]]
     for t in d["tasks"]:
         assert set(t) == {"task_ref", "task_id", "kind", "field_id", "holdout", "answer", "consensus_score", "votes",
-                          "frame_count", "variant"}
+                          "frame_count", "variant", "given"}
+        assert t["given"] is None
+    answers = [{"task_ref": t["task_ref"], "choice": "not_moving"} for t in ch["tasks"]]
+    c.post(f"/v1/challenge/{ch['challenge_id']}/submit", json={"answers": answers})
+    d = c.get(f"/v1/dev/challenge/{ch['challenge_id']}").json()
+    assert all(t["given"] == "not_moving" for t in d["tasks"])
+    for t in d["tasks"]:
         assert set(t["variant"]) == {"crop", "rot90", "flip"}
     p = c.get("/v1/dev/pool").json()
     assert {"by_kind", "fields", "active_tasks"} <= set(p)
@@ -187,3 +197,49 @@ def test_local_store_reads_generator_db_read_only(tmp_path):
     counts = c.get("/v1/dev/pool").json()
     assert counts["fields"]["total"] == 6 and counts["active_tasks"] == 9
     assert (data / "skytask.sqlite3").read_bytes() == before, "generator database untouched"
+
+
+def test_missing_task_at_submit_fails_loudly(tmp_path):
+    c, app, _ = make_client(tmp_path)
+    sid = new_session(c)
+    ch = c.post("/v1/challenge", json={"session_id": sid, "count": 3}).json()
+    gone = app.state.db.challenge_tasks(ch["challenge_id"])[0]["task_id"]
+    del app.state.store.tasks[gone]
+    answers = [{"task_ref": t["task_ref"], "choice": "moving"} for t in ch["tasks"]]
+    r = c.post(f"/v1/challenge/{ch['challenge_id']}/submit", json={"answers": answers})
+    assert r.status_code == 500 and r.json()["detail"]["error"] == "task_unavailable"
+    assert app.state.db.q("SELECT * FROM answers") == []
+    assert app.state.db.session(sid)["alpha"] == 3
+
+
+def test_parallel_challenges_one_session_distinct_fields(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    c, app, _ = make_client(tmp_path)
+    sid = new_session(c)
+    with ThreadPoolExecutor(8) as ex:
+        rs = list(ex.map(lambda _: c.post("/v1/challenge", json={"session_id": sid, "count": 2}), range(12)))
+    ok = [r.json()["challenge_id"] for r in rs if r.status_code == 200]
+    fields = [app.state.store.get(x["task_id"])["field_id"] for cid in ok for x in app.state.db.challenge_tasks(cid)]
+    assert ok and len(fields) == len(set(fields))
+
+
+def test_widget_and_explorer_mounts(tmp_path):
+    (tmp_path / "w").mkdir(); (tmp_path / "w" / "sky-task.js").write_text("// widget")
+    (tmp_path / "e").mkdir(); (tmp_path / "e" / "index.html").write_text("<p>demo</p>")
+    c, _, _ = make_client(tmp_path, static_dir=tmp_path / "e", widget_dir=tmp_path / "w")
+    assert c.get("/widget/sky-task.js").text == "// widget"
+    assert "demo" in c.get("/").text
+    assert c.post("/v1/sessions", json={"site_key": "k"}).status_code == 200
+
+
+def test_image_rendered_once(tmp_path, monkeypatch):
+    import app.main as m
+    c, _, _ = make_client(tmp_path)
+    sid = new_session(c)
+    ch = c.post("/v1/challenge", json={"session_id": sid, "count": 2}).json()
+    calls = []
+    real = m.make_variant_debug
+    monkeypatch.setattr(m, "make_variant_debug", lambda *a: calls.append(1) or real(*a))
+    for t in ch["tasks"]:
+        assert c.get(t["image_url"]).status_code == 200
+    assert calls == [], "served from the per-challenge cache"

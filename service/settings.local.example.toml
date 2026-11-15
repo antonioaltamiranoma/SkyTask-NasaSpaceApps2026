@@ -26,3 +26,17 @@ cors_origins = ["http://localhost:8080", "http://127.0.0.1:8080", "http://localh
 [site_keys.local-demo]
 max_count = 10
 modes = ["none", "score", "token"]
+
+# Site keys used by the demo pages in explorer/ (index.html, game.html, inspector.html)
+
+[site_keys.demo]
+max_count = 10
+modes = ["none", "score", "token"]
+
+[site_keys.demo-game]
+max_count = 10
+modes = ["none", "score", "token"]
+
+[site_keys.inspector]
+max_count = 10
+modes = ["none", "score", "token"]

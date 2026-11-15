@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Task inspector</title>
+<link rel="icon" href="assets/sky-task-logo.svg">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .controls { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .controls label { display: grid; gap: 4px; font-size: .8125rem; font-weight: 600; }
+  .controls input, .controls select { font: inherit; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: inherit; min-width: 0; }
+  .controls .api-in { width: min(360px, 100%); }
+  .btn { font: inherit; font-weight: 650; padding: 9px 16px; border-radius: 8px; border: 0; background: var(--ink); color: var(--paper); cursor: pointer; min-height: 40px; }
+  .btn.secondary { background: transparent; color: var(--ink); border: 1.5px solid var(--ink); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  pre { font: .78rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--paper); border: 1px solid var(--line);
+        border-radius: 10px; padding: 12px; overflow: auto; max-height: 360px; margin: 0; white-space: pre; }
+  .calls { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .call h3 { font-size: .9375rem; margin: 0 0 6px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .call h3 small { font-weight: 400; color: var(--muted); }
+  .tasks { display: grid; gap: 12px; }
+  .task { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 12px; align-items: start; }
+  @media (max-width: 560px) { .task { grid-template-columns: 1fr; } }
+  .task img { image-rendering: pixelated; height: 96px; width: auto; max-width: 100%; background: #000; border-radius: 4px; display: block; }
+  .facts { font-size: .8125rem; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 0; }
+  .facts dt { color: var(--muted); }
+  .facts dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  .choice { display: flex; gap: 12px; font-size: .875rem; margin-top: 8px; flex-wrap: wrap; }
+  .check { margin: 0; font-size: .875rem; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); }
+  .check.bad { border-color: #C0392B; }
+  .check.bad::before { content: "Problem: "; font-weight: 700; color: #C0392B; }
+  .check.good::before { content: "OK: "; font-weight: 700; }
+  .dev { margin-top: 32px; border: 3px dashed #C0392B; border-radius: 14px; padding: 16px; }
+  .dev-banner { background: #C0392B; color: #fff; font-weight: 800; font-size: 1.25rem; letter-spacing: .02em; padding: 8px 14px; border-radius: 8px; margin: 0 0 8px; }
+  .dev table { border-collapse: collapse; width: 100%; font-size: .8125rem; font-variant-numeric: tabular-nums; }
+  .dev th, .dev td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .dev .scroll { overflow-x: auto; }
+  .muted { color: var(--muted); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./"><img src="assets/sky-task-logo.svg" alt="">Sky Task</a>
+  <nav aria-label="Demo pages">
+    <a href="./">Sign-up form</a>
+    <a href="game.html">Game</a>
+    <a href="inspector.html" aria-current="page">Inspector</a>
+  </nav>
+  <span class="api">API: <span data-api-label></span></span>
+</header>
+
+<main class="wrap">
+  <h1>What the browser receives</h1>
+  <p class="lede">This page calls the API itself and shows every response exactly as it arrives, with image sizes and timings. Use it to check that nothing in the public data hints at which tasks are controls.</p>
+
+  <form class="controls" id="f">
+    <label>API base <input class="api-in" name="api" id="api"></label>
+    <label>Site key <input name="site_key" value="inspector" size="10"></label>
+    <label>Tasks <input name="count" type="number" min="2" max="10" value="4" style="width:5em"></label>
+    <label>Result
+      <select name="result"><option>none</option><option>score</option><option>token</option></select>
+    </label>
+    <button class="btn" type="submit" id="run">Get a challenge</button>
+    <button class="btn secondary" type="button" id="submit" disabled>Submit my choices</button>
+  </form>
+
+  <h2>Public data check</h2>
+  <div id="checks" class="tasks"><p class="muted">Run a challenge to check it.</p></div>
+
+  <h2>Tasks</h2>
+  <div id="tasks" class="tasks"><p class="muted">No challenge yet.</p></div>
+
+  <h2>Raw responses</h2>
+  <div class="calls" id="calls"></div>
+
+  <section class="dev" id="dev" hidden aria-labelledby="dev-h">
+    <p class="dev-banner" id="dev-h">DEV ONLY: server-side view</p>
+    <p class="muted">This comes from <code>/v1/dev/challenge/{id}</code>, which exists only on a local service started with <code>SKYTASK_DEV=1</code> (or the mock server). A browser on the real site can never see this.</p>
+    <p id="dev-mix"></p>
+    <div class="scroll"><table id="dev-table"></table></div>
+  </section>
+</main>
+
+<script src="assets/config.js"></script>
+<script>
+  const PUBLIC_KEYS = ["task_ref", "image_url", "frame_count", "frame_size", "highlight", "frame_offsets_h", "options"];
+  const $ = (s) => document.querySelector(s);
+  $("#api").value = window.SKYTASK_API;
+  let ch = null;
+
+  function callBox(title, info, obj) {
+    const d = document.createElement("div");
+    d.className = "call";
+    d.innerHTML = "<h3></h3><pre></pre>";
+    d.querySelector("h3").textContent = title + " ";
+    const s = document.createElement("small"); s.textContent = info; d.querySelector("h3").appendChild(s);
+    d.querySelector("pre").textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+    $("#calls").appendChild(d);
+  }
+  async function call(method, url, body) {
+    const t0 = performance.now();
+    const res = await fetch(url, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+    const ms = Math.round(performance.now() - t0);
+    const text = await res.text();
+    let data; try { data = JSON.parse(text); } catch { data = text; }
+    callBox(method + " " + url.replace($("#api").value, ""), `HTTP ${res.status} · ${ms} ms · ${text.length} bytes`, body ? { request: body, response: data } : data);
+    if (!res.ok) throw new Error(`${method} ${url} → HTTP ${res.status}`);
+    return data;
+  }
+  function check(ok, text) {
+    const p = document.createElement("p"); p.className = "check " + (ok ? "good" : "bad"); p.textContent = text; $("#checks").appendChild(p);
+  }
+  async function loadImage(url) {
+    const t0 = performance.now();
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const ms = Math.round(performance.now() - t0);
+    const src = URL.createObjectURL(blob);
+    const img = new Image(); img.src = src; await img.decode();
+    const textChunks = await pngTextChunks(blob);
+    return { src, bytes: blob.size, type: blob.type, w: img.naturalWidth, h: img.naturalHeight, ms, textChunks, status: res.status };
+  }
+  // PNG metadata chunks (tEXt/iTXt/zTXt/eXIf/tIME) could leak information: list any we find
+  async function pngTextChunks(blob) {
+    const b = new Uint8Array(await blob.arrayBuffer()); const found = [];
+    let i = 8;
+    while (i + 8 <= b.length) {
+      const len = (b[i] << 24 | b[i + 1] << 16 | b[i + 2] << 8 | b[i + 3]) >>> 0;
+      const type = String.fromCharCode(b[i + 4], b[i + 5], b[i + 6], b[i + 7]);
+      if (["tEXt", "iTXt", "zTXt", "eXIf", "tIME"].includes(type)) found.push(type);
+      i += 12 + len;
+    }
+    return found;
+  }
+
+  $("#f").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const api = fd.get("api").replace(/\/$/, "");
+    $("#calls").innerHTML = ""; $("#tasks").innerHTML = ""; $("#checks").innerHTML = ""; $("#dev").hidden = true; $("#submit").disabled = true;
+    try {
+      const s = await call("POST", api + "/sessions", { site_key: fd.get("site_key") });
+      ch = await call("POST", api + "/challenge", { session_id: s.session_id, count: Number(fd.get("count")), result: fd.get("result") });
+      const extraTop = Object.keys(ch).filter((k) => !["challenge_id", "expires_at", "tasks"].includes(k));
+      check(!extraTop.length, extraTop.length ? "Unexpected challenge fields: " + extraTop.join(", ") : "Challenge has only challenge_id, expires_at, tasks.");
+      ch._api = api;
+      const extra = new Set(); ch.tasks.forEach((t) => Object.keys(t).forEach((k) => PUBLIC_KEYS.includes(k) || extra.add(k)));
+      check(!extra.size, extra.size ? "Task fields outside the allowed list: " + [...extra].join(", ") : "Every task has only the allowed public fields.");
+      const counts = new Set(ch.tasks.map((t) => t.frame_count));
+      check(true, "Frame counts in this challenge: " + [...counts].join(", ") + " (should not track task kind; compare with the dev view).");
+      const refs = ch.tasks.map((t) => t.task_ref);
+      check(new Set(refs).size === refs.length, "task_ref values are unique in this challenge.");
+
+      const imgs = await Promise.all(ch.tasks.map((t) => loadImage(new URL(t.image_url, api + "/").href)));
+      ch.tasks.forEach((t, i) => {
+        const im = imgs[i];
+        const el = document.createElement("div"); el.className = "task";
+        el.innerHTML = `<img alt="Strip ${i + 1}"><div><dl class="facts"></dl><div class="choice"></div></div>`;
+        el.querySelector("img").src = im.src;
+        const facts = {
+          "#": i + 1, task_ref: t.task_ref, image_url: t.image_url,
+          image: `${im.w}×${im.h}px, ${(im.bytes / 1024).toFixed(1)} kB, ${im.type}, ${im.ms} ms`,
+          "expected size": `${t.frame_size * t.frame_count}×${t.frame_size}px`,
+          frame_count: t.frame_count, frame_offsets_h: JSON.stringify(t.frame_offsets_h), highlight: JSON.stringify(t.highlight),
+          "PNG text chunks": im.textChunks.length ? im.textChunks.join(", ") : "none",
+        };
+        const dl = el.querySelector("dl");
+        Object.entries(facts).forEach(([k, v]) => { const dt = document.createElement("dt"); dt.textContent = k; const dd = document.createElement("dd"); dd.textContent = v; dl.append(dt, dd); });
+        el.querySelector(".choice").innerHTML =
+          `<label><input type="radio" name="c${i}" value="moving" checked> moving</label><label><input type="radio" name="c${i}" value="not_moving"> not_moving</label>`;
+        $("#tasks").appendChild(el);
+        if (im.w !== t.frame_size * t.frame_count || im.h !== t.frame_size) check(false, `Image ${i + 1} size ${im.w}×${im.h} does not match frame_size × frame_count.`);
+        if (im.textChunks.length) check(false, `Image ${i + 1} carries PNG metadata chunks: ${im.textChunks.join(", ")}.`);
+      });
+      const kb = imgs.map((x) => x.bytes / 1024);
+      check(true, `Image sizes: ${kb.map((x) => x.toFixed(1)).join(", ")} kB. Large size differences between tasks could hint at kind.`);
+      $("#submit").disabled = false;
+      await devView();
+    } catch (err) { check(false, String(err.message || err)); }
+  });
+
+  $("#submit").addEventListener("click", async () => {
+    if (!ch) return;
+    $("#submit").disabled = true;
+    const answers = ch.tasks.map((t, i) => ({ task_ref: t.task_ref, choice: document.querySelector(`input[name=c${i}]:checked`).value }));
+    try { await call("POST", `${ch._api}/challenge/${encodeURIComponent(ch.challenge_id)}/submit`, { answers }); await devView(); }
+    catch (err) { check(false, String(err.message || err)); }
+  });
+
+  async function devView() {
+    let res;
+    try { res = await fetch(`${ch._api}/dev/challenge/${encodeURIComponent(ch.challenge_id)}`); } catch { return; }
+    if (!res.ok) { $("#dev").hidden = true; return; }
+    const d = await res.json();
+    $("#dev").hidden = false;
+    const m = d.mix || {};
+    $("#dev-mix").textContent = `Mode ${d.mode}. Mix: ${m.controls ?? "?"} controls, ${m.holdout_controls ?? "?"} holdout controls, ${m.science_unsettled ?? "?"} unsettled science, ${m.science_settled ?? "?"} settled science.`;
+    const cols = ["task_ref", "task_id", "kind", "field_id", "holdout", "answer", "given", "consensus_score", "votes", "frame_count", "variant"];
+    const t = $("#dev-table"); t.innerHTML = "";
+    const head = t.insertRow(); cols.forEach((c) => { const th = document.createElement("th"); th.textContent = c; head.appendChild(th); });
+    (d.tasks || []).forEach((row) => {
+      const r = t.insertRow();
+      cols.forEach((c) => { const v = row[c]; r.insertCell().textContent = v === undefined ? "" : typeof v === "object" && v !== null ? JSON.stringify(v) : String(v); });
+    });
+  }
+</script>
+</body>
+</html>

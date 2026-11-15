@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Task game demo</title>
+<link rel="icon" href="assets/sky-task-logo.svg">
+<link rel="stylesheet" href="assets/site.css">
+<script src="/widget/sky-task.js" defer></script>
+<style>
+  .game {
+    position: relative; overflow: hidden; border-radius: 14px; height: min(78vh, 620px); min-height: 460px;
+    container: game / size; background: #071017; color: #CFE8E2;
+    font-family: "Trebuchet MS", ui-sans-serif, system-ui, sans-serif;
+  }
+  .scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .hud { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; gap: 12px; align-items: center; font-size: .875rem; }
+  .fuel { display: flex; align-items: center; gap: 8px; }
+  .gauge { width: 120px; height: 10px; border: 1px solid #3F6B66; border-radius: 5px; overflow: hidden; }
+  .gauge i { display: block; height: 100%; width: 30%; background: #FFB547; transition: width .6s; }
+  .reward { color: #FFB547; font-weight: 700; opacity: 0; transition: opacity .3s; }
+  .reward.on { opacity: 1; }
+  .scan {
+    position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%);
+    font: inherit; font-weight: 700; color: #071017; background: #FFB547; border: 0; border-radius: 6px;
+    padding: 12px 18px; min-height: 44px; cursor: pointer; box-shadow: 0 0 0 6px rgba(255,181,71,.18);
+  }
+  .panel {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 92%; overflow: auto;
+    padding: 10px; background: rgba(4, 10, 14, .82); border-top: 1px solid #24413F;
+    transform: translateY(105%); transition: transform .3s ease; visibility: hidden;
+  }
+  .panel.open { transform: none; visibility: visible; }
+  .panel-head { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px 8px; font-size: .875rem; }
+  .close { font: inherit; color: inherit; background: none; border: 1px solid #3F6B66; border-radius: 6px; min-height: 36px; padding: 4px 12px; cursor: pointer; }
+  /* landscape game: side panel, about a third of the screen */
+  @container game (min-aspect-ratio: 1/1) {
+    .panel { left: auto; top: 44px; width: max(340px, 36%); max-height: none; border-top: 0; border-left: 1px solid #24413F; transform: translateX(105%); }
+    .panel.open { transform: none; }
+  }
+  /* short landscape phones: a wider panel so the widget switches to two columns */
+  @container game (min-aspect-ratio: 1/1) and (max-height: 480px) {
+    .panel { width: 58%; }
+    sky-task { --sky-task-stage-max: 72cqh; }
+  }
+  sky-task {
+    --sky-task-bg: #0C1A1E; --sky-task-fg: #D7EEE8; --sky-task-muted: #7FA49D; --sky-task-line: #24413F;
+    --sky-task-accent: #FFB547; --sky-task-radius: 4px;
+    --sky-task-stage-max: 40cqh; /* keep the whole widget visible inside the game screen */
+  }
+  .sizes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; }
+  .sizes button { font: inherit; font-size: .875rem; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); cursor: pointer; }
+  .sizes button[aria-pressed="true"] { border-color: var(--ink); font-weight: 650; }
+  .frame { margin: 0 auto; transition: max-width .3s; }
+  @media (prefers-reduced-motion: reduce) { .panel, .gauge i, .frame { transition: none; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./"><img src="assets/sky-task-logo.svg" alt="">Sky Task</a>
+  <nav aria-label="Demo pages">
+    <a href="./">Sign-up form</a>
+    <a href="game.html" aria-current="page">Game</a>
+    <a href="inspector.html">Inspector</a>
+  </nav>
+  <span class="api">API: <span data-api-label></span></span>
+</header>
+
+<main class="wrap">
+  <h1>Sky Task inside a game</h1>
+  <p class="lede">A made-up game scene. The game decides when to ask, styles the widget with its own colors, and pays the reward. Sky Task only supplies the task and a score. Try the phone shapes: portrait opens a bottom sheet, landscape opens a side panel.</p>
+
+  <div class="sizes" role="group" aria-label="Game screen shape">
+    <button type="button" data-w="100%" aria-pressed="true">Desktop</button>
+    <button type="button" data-w="380px" aria-pressed="false">Phone, portrait</button>
+    <button type="button" data-w="820px" data-h="380px" aria-pressed="false">Phone, landscape</button>
+  </div>
+
+  <div class="frame" id="frame">
+    <div class="game" id="game">
+      <svg class="scene" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <radialGradient id="g-sky" cx="50%" cy="30%" r="80%"><stop offset="0" stop-color="#14304A"/><stop offset="1" stop-color="#050A10"/></radialGradient>
+          <linearGradient id="g-ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A2A22"/><stop offset="1" stop-color="#120C0A"/></linearGradient>
+        </defs>
+        <rect width="800" height="600" fill="url(#g-sky)"/>
+        <g fill="#E8EEF7" opacity=".8">
+          <circle cx="90" cy="70" r="1.4"/><circle cx="210" cy="140" r="1"/><circle cx="330" cy="50" r="1.8"/><circle cx="470" cy="110" r="1.2"/>
+          <circle cx="610" cy="60" r="1.6"/><circle cx="720" cy="160" r="1"/><circle cx="150" cy="230" r="1.2"/><circle cx="560" cy="210" r="1"/>
+          <circle cx="400" cy="190" r="1.4"/><circle cx="680" cy="250" r="1.2"/><circle cx="40" cy="180" r="1"/><circle cx="270" cy="260" r="1"/>
+        </g>
+        <path d="M0 430 Q140 380 260 410 T520 400 T800 420 V600 H0Z" fill="url(#g-ground)"/>
+        <g transform="translate(400 380)" stroke="#9FC3BC" stroke-width="3" fill="none">
+          <path d="M-60 -40 A70 70 0 0 0 60 -40" />
+          <line x1="0" y1="-10" x2="0" y2="40"/><line x1="-30" y1="40" x2="30" y2="40"/><line x1="0" y1="-10" x2="0" y2="-55"/>
+          <circle cx="0" cy="-58" r="4" fill="#FFB547" stroke="none"/>
+        </g>
+      </svg>
+      <div class="hud">
+        <span>Relay station 4</span>
+        <span class="fuel">Fuel <span class="gauge"><i id="fuel"></i></span> <span class="reward" id="reward"></span></span>
+      </div>
+      <button class="scan" id="scan" type="button">Scan the sky for the relay</button>
+      <div class="panel" id="panel" role="dialog" aria-modal="false" aria-label="Sky scan">
+        <div class="panel-head"><span>Sky scan</span><button class="close" id="close" type="button">Close</button></div>
+        <sky-task id="w" site-key="demo-game" count="3" result="score" layout="screen" theme="dark"></sky-task>
+      </div>
+    </div>
+  </div>
+  <p class="demo-note">Game art is a placeholder drawn for this demo. The reward (+fuel) belongs to the game, not to Sky Task.</p>
+</main>
+
+<script src="assets/config.js"></script>
+<script>
+  const panel = document.getElementById("panel"), w = document.getElementById("w"), scan = document.getElementById("scan");
+  let fuel = 30;
+  // keep the widget idle until the player opens the scanner
+  const tpl = w; tpl.remove();
+  const open = () => {
+    if (!panel.contains(w)) panel.appendChild(w); else w.reset();
+    panel.classList.add("open"); scan.hidden = true;
+    setTimeout(() => document.getElementById("close").focus(), 50);
+  };
+  const close = () => { panel.classList.remove("open"); scan.hidden = false; scan.focus(); };
+  scan.addEventListener("click", open);
+  document.getElementById("close").addEventListener("click", close);
+  w.addEventListener("sky-task-result", (e) => {
+    const gain = Math.round((e.detail.score || 0) / 10);
+    fuel = Math.min(100, fuel + gain);
+    document.getElementById("fuel").style.width = fuel + "%";
+    const r = document.getElementById("reward");
+    r.textContent = "+" + gain + " fuel"; r.classList.add("on");
+    setTimeout(() => r.classList.remove("on"), 2500);
+  });
+  document.querySelectorAll(".sizes button").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(".sizes button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    document.getElementById("frame").style.maxWidth = b.dataset.w;
+    document.getElementById("game").style.height = b.dataset.h || "";
+    document.getElementById("game").style.minHeight = b.dataset.h ? "0" : "";
+  }));
+</script>
+</body>
+</html>

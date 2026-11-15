@@ -1,0 +1,42 @@
+/* Shared styles for the Sky Task demo pages (not used by the widget, which carries its own). */
+:root {
+  --night: #0B1220;
+  --night-2: #16223A;
+  --star: #E8EEF7;
+  --ir: #FF8A4C;
+  --ink: #18202E;
+  --muted: #5C6678;
+  --line: #D5DCE6;
+  --paper: #FFFFFF;
+  --page: #EEF2F7;
+  --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ink: #E8EEF7; --muted: #9AA6B8; --line: #2B374A; --paper: #131C2C; --page: #0B1220; }
+}
+:root[data-theme="dark"] { --ink: #E8EEF7; --muted: #9AA6B8; --line: #2B374A; --paper: #131C2C; --page: #0B1220; }
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: var(--font); color: var(--ink); background: var(--page); line-height: 1.5; }
+a { color: inherit; }
+
+.topbar {
+  display: flex; align-items: center; gap: 12px 20px; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--night); color: var(--star);
+}
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; letter-spacing: -0.01em; }
+.brand img { width: 28px; height: 28px; border-radius: 6px; }
+.topbar nav { display: flex; gap: 4px 16px; flex-wrap: wrap; font-size: .9375rem; }
+.topbar nav a { text-decoration: none; opacity: .8; padding: 4px 0; border-bottom: 2px solid transparent; }
+.topbar nav a:hover { opacity: 1; }
+.topbar nav a[aria-current="page"] { opacity: 1; border-bottom-color: var(--ir); }
+.topbar .api { margin-left: auto; font-size: .75rem; opacity: .7; overflow-wrap: anywhere; }
+
+.wrap { max-width: 1040px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 8px; }
+h2 { font-size: 1.125rem; margin: 28px 0 8px; }
+.lede { color: var(--muted); max-width: 62ch; margin: 0 0 24px; }
+.demo-note { font-size: .8125rem; color: var(--muted); }
+
+:focus-visible { outline: 2px solid var(--ir); outline-offset: 2px; }

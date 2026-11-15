@@ -244,3 +244,5 @@ service/local_service.sqlite3*
 # Web tooling
 node_modules/
 .firebase/
+# Copied in by the Firebase predeploy step (source of truth: widget/)
+explorer/widget/

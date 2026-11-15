@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "explorer",
+    "ignore": ["dev/**", "README.md", "**/.*"],
+    "predeploy": ["node -e \"require('fs').cpSync('widget','explorer/widget',{recursive:true})\""],
+    "headers": [
+      { "source": "/widget/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }] }
+    ]
+  }
+}

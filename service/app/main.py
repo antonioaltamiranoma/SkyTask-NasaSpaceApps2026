@@ -114,6 +114,14 @@ def create_app(settings: Settings | None = None, store: TaskStore | None = None)
     pngs, session_locks = PngCache(), SessionLocks()
 
     app = FastAPI(title="Sky Task API", version="0.1.0")
+
+    @app.middleware("http")
+    async def _no_store(request, call_next):
+        # API answers are per-session: never let a CDN (Firebase Hosting) or browser cache them.
+        resp = await call_next(request)
+        if request.url.path.startswith("/v1") and "cache-control" not in resp.headers:
+            resp.headers["Cache-Control"] = "no-store"
+        return resp
     app.state.settings, app.state.store, app.state.db = s, store, state
     app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins, allow_methods=["GET", "POST"],
                        allow_headers=["Content-Type"])

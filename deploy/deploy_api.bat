@@ -7,7 +7,7 @@ set REGION=us-central1
 python deploy\make_snapshot.py %1 || goto :error
 call gcloud run deploy skytask-api --source . --project %PROJECT% --region %REGION% ^
   --service-account skytask-api@%PROJECT%.iam.gserviceaccount.com ^
-  --allow-unauthenticated --max-instances 1 --min-instances 0 --memory 512Mi --cpu 1 --timeout 60 ^
+  --allow-unauthenticated --max-instances 1 --min-instances 1 --memory 512Mi --cpu 1 --timeout 60 ^
   --quiet || goto :error
 echo.
 echo Done. Test it:  curl -X POST https://YOUR-RUN-URL/v1/sessions -H "Content-Type: application/json" -d "{\"site_key\":\"demo\"}"

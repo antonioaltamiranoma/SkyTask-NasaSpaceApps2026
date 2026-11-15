@@ -24,3 +24,11 @@ service/tests/
 service/settings.local.toml
 service/local_service.sqlite3*
 *.fits
+.env
+.env.*
+*-key.json
+serviceAccount*.json
+service-account*.json
+firebase-adminsdk*.json
+*.jsonl
+service/*.sqlite3*

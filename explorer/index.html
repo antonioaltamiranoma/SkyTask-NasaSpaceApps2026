@@ -9,7 +9,8 @@
 <script src="/widget/sky-task.js" defer></script>
 <style>
   .grid { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 32px; align-items: start; }
-  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 760px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .grid > * { min-width: 0; }
   form.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 14px; }
   form.card h2 { margin: 0; }
   label { display: grid; gap: 4px; font-size: .875rem; font-weight: 600; }
@@ -22,7 +23,7 @@
   fieldset label { display: flex; gap: 8px; font-weight: 400; align-items: baseline; }
   legend { font-weight: 650; font-size: .875rem; padding: 0 4px; }
   .log { font: .8125rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--paper); border: 1px solid var(--line);
-         border-radius: 10px; padding: 12px; min-height: 120px; max-height: 280px; overflow: auto; white-space: pre-wrap; margin: 0; }
+         border-radius: 10px; padding: 12px; min-height: 120px; max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
   .sent { font-size: .875rem; color: var(--muted); }
 </style>
 </head>

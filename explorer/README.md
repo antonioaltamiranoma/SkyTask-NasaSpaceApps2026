@@ -40,4 +40,18 @@ python explorer/dev/mock_server.py --port 8099
 node explorer/dev/e2e.js ./shots
 ```
 
-It takes screenshots at 320, 390 and 1280 px in light and dark, runs the full flow in all three result modes (including a failed token attempt), checks keyboard and reduced motion, the three game shapes and the inspector, and prints PASS/FAIL lines.
+There is no `package.json` and nothing to `npm install` in this repo. The script only needs Node and a Playwright that `require("playwright")` can find:
+
+- if Playwright is already installed globally: `NODE_PATH="$(npm root -g)" node explorer/dev/e2e.js ./shots` (Windows PowerShell: `$env:NODE_PATH = (npm root -g); node explorer/dev/e2e.js shots`)
+- point at another server (e.g. the local service started with `SKYTASK_DEV=1`): `SKYTASK_BASE=http://127.0.0.1:8080 node explorer/dev/e2e.js ./shots`
+
+It takes screenshots at 320, 390 and 1280 px in light and dark and checks:
+
+- the full flow in all three result modes; a failed token attempt loads a new `challenge_id`, and its event carries no per-task information;
+- arrow keys move exactly one picture, and reduced motion stops the auto-blink;
+- the disclosure is visible while loading, during a task, on the result and on an error, even with host CSS that targets `::part()`;
+- there are exactly two answers (Moving, Not moving);
+- a double tap or a held Enter answers only one task;
+- the three game shapes and the inspector's public-data checks.
+
+It prints PASS/FAIL lines and exits non-zero on any failure.

@@ -40,14 +40,14 @@ CSS custom properties, set on the element or any ancestor:
 | `--sky-task-font` | system UI stack | Font family |
 | `--sky-task-stage-max` | `100%` | Max width of the picture area (handy inside short game screens, e.g. `40cqh`) |
 
-For anything else, these `::part()` names are stable: `container`, `header`, `progress`, `viewport`, `status`, `controls`, `tick`, `answers`, `answer`, `answer-moving`, `answer-not-moving`, `result`, `again`, `retry`, `footer`, `disclosure`, `about`.
+For anything else, these `::part()` names are stable: `header`, `progress`, `viewport`, `status`, `controls`, `tick`, `answers`, `answer`, `answer-moving`, `answer-not-moving`, `result`, `again`, `retry`, `about`.
 
 ```css
 sky-task { --sky-task-accent: #FFB547; --sky-task-bg: #0C1A1E; --sky-task-fg: #D7EEE8; --sky-task-radius: 4px; }
 sky-task::part(answer) { text-transform: none; }
 ```
 
-What a host **cannot** remove: the disclosure line "Helps analyze NASA SPHEREx data" and the two answers. Please don't hide them with `::part`; the project rules require them.
+The disclosure line "Helps analyze NASA SPHEREx data" is deliberately **not** a part and sits outside every exposed part, so host CSS can't target or hide it. Its colour is derived from `--sky-task-fg` and `--sky-task-bg`, so it stays readable in any theme.
 
 ## Events and methods
 
@@ -65,7 +65,9 @@ Both events bubble and cross the Shadow DOM boundary.
 ## Behaviour
 
 - The pictures blink every 0.6 s. Play/pause, previous and next buttons; the timeline under the pictures spaces the dots by the real hours between pictures, and each dot can be clicked.
-- Keyboard: Tab through the controls; on the picture area, ← → step and Space plays or pauses.
+- Keyboard: Tab through the controls; on the picture area, ← → step and Space plays or pauses. The focus ring uses the text colour, so it keeps at least 3:1 contrast in any theme.
+- Answers are ignored for 0.3 s after each new task appears, and a held Enter key never answers twice, so a double tap can't answer the next task by accident.
+- Screen readers hear one short announcement per task; loading and errors are announced from the picture area (errors as alerts).
 - With "reduce motion" on, nothing blinks by itself: the person steps through the pictures.
 - Works from 320 px wide. Answer buttons are at least 44 px tall.
 - The session id is kept in `sessionStorage` (per API and site key) and silently renewed if the server forgot it.

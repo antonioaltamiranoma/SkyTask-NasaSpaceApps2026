@@ -11,6 +11,7 @@
   if (customElements.get("sky-task")) return;
 
   const BLINK_MS = 600;
+  const ANSWER_GUARD_MS = 300;
   const QUESTION = "Did the circled dot move?";
   const DISCLOSURE = "Helps analyze NASA SPHEREx data";
   const ABOUT =
@@ -82,7 +83,8 @@
     overflow: hidden;
     outline-offset: 3px;
   }
-  .stage:focus-visible, button:focus-visible { outline: 2px solid var(--_accent); }
+  /* focus ring in the text colour: always >= 3:1 against the card */
+  .stage:focus-visible, button:focus-visible { outline: 2px solid var(--_fg); outline-offset: 2px; }
   canvas { display: block; width: 100%; height: 100%; }
   .veil {
     position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
@@ -122,6 +124,7 @@
   .answer:hover:not(:disabled) { background: var(--_fg); color: var(--_bg); }
   .answer:disabled { opacity: .45; cursor: default; }
 
+  .disclosure { color: color-mix(in srgb, var(--_fg) 75%, var(--_bg)); }
   footer { display: flex; justify-content: space-between; gap: 6px 12px; flex-wrap: wrap; font-size: .75rem; color: var(--_muted); line-height: 1.35; }
   .link { background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; color: var(--_muted); font-size: inherit; }
   .link:hover { color: var(--_fg); }
@@ -176,14 +179,14 @@
       super();
       this._root = this.attachShadow({ mode: "open" });
       this._root.innerHTML = `<style>${CSS}</style>
-      <div class="st task" part="container" role="group" aria-label="Sky Task">
+      <div class="st task" role="group" aria-label="Sky Task">
         <header part="header">
           <p class="q" id="q">${QUESTION}</p>
-          <p class="prog" part="progress" aria-live="polite"></p>
+          <p class="prog" part="progress"></p>
         </header>
-        <div class="stage" part="viewport" tabindex="0" role="img" aria-roledescription="blinking sky images">
+        <div class="stage" part="viewport" tabindex="0" role="group" aria-label="Sky pictures. A circle marks one dot. Left and right arrows step through the pictures; Space plays or pauses.">
           <canvas></canvas>
-          <div class="veil" part="status"><div><p class="msg">Loading sky images…</p></div></div>
+          <div class="veil" part="status" role="status" aria-live="polite"><div><p class="msg">Loading sky images…</p></div></div>
         </div>
         <div class="transport" part="controls">
           <button class="icon play" type="button" aria-label="Pause"></button>
@@ -196,8 +199,8 @@
           <button class="answer" part="answer answer-not-moving" type="button" data-choice="not_moving">Not moving</button>
         </div>
         <div class="done" part="result" hidden aria-live="polite"></div>
-        <footer part="footer">
-          <span part="disclosure">${DISCLOSURE}</span>
+        <footer>
+          <span class="disclosure">${DISCLOSURE}</span>
           <button class="link about-btn" type="button" aria-expanded="false">What am I looking at?</button>
         </footer>
         <p class="about" part="about" hidden>${ABOUT}</p>
@@ -342,6 +345,7 @@
       const v = this.$.veil;
       if (!text) { v.hidden = true; return; }
       v.hidden = false;
+      v.setAttribute("role", retry ? "alert" : "status");
       v.innerHTML = `<div><p class="msg"></p>${retry ? '<button class="again retry" type="button" part="retry">Try again</button>' : ""}</div>`;
       v.querySelector(".msg").textContent = text;
       if (retry) v.querySelector(".retry").addEventListener("click", () => this.reset());
@@ -354,6 +358,7 @@
       const t = this._task;
       this.$.prog.textContent = this._tasks.length > 1 ? `${this._idx + 1} of ${this._tasks.length}` : "";
       this._frame = 0;
+      this._taskStart = performance.now();
       this._buildTicks(t);
       this._setAnswering(true);
       this._draw();
@@ -406,8 +411,6 @@
       ctx.lineWidth = 2 * dpr; ctx.strokeStyle = accent;
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
       (this._ticks || []).forEach((b, i) => b.setAttribute("aria-current", String(i === this._frame)));
-      this.$.stage.setAttribute("aria-label",
-        `Picture ${this._frame + 1} of ${t.frame_count}. A circle marks one dot.`);
     }
 
     _show(i) { const n = this._task.frame_count; this._frame = ((i % n) + n) % n; this._draw(); }
@@ -428,6 +431,7 @@
     _setAnswering(on) { this.$.answers.forEach((b) => (b.disabled = !on)); }
 
     _key(e) {
+      if (e.repeat && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); return; } // held key must not answer again
       if (e.altKey || e.ctrlKey || e.metaKey || !this._task || this._busy) return;
       const onButton = e.composedPath()[0]?.tagName === "BUTTON";
       if (e.key === "ArrowLeft") { this._step(-1); e.preventDefault(); }
@@ -437,6 +441,7 @@
 
     async _answer(choice) {
       if (this._busy || !this._task) return;
+      if (performance.now() - (this._taskStart || 0) < ANSWER_GUARD_MS) return; // double tap / held key
       this._answers.push({ task_ref: this._task.task_ref, choice });
       if (this._idx + 1 < this._tasks.length) {
         this._idx += 1;

@@ -246,3 +246,6 @@ node_modules/
 .firebase/
 # Copied in by the Firebase predeploy step (source of truth: widget/)
 explorer/widget/
+
+# Cloud deploy snapshot (generator data baked into the private image)
+deploy/_snapshot/

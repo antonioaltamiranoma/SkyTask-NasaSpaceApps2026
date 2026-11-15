@@ -1,0 +1,28 @@
+# Sky Task service - Cloud Run settings (no secrets here). Paths are relative to this file (/app/service).
+[local]
+generator_data_dir = "../data"                   # task snapshot baked into the private image
+service_db = "/tmp/skytask_service.sqlite3"      # phase A: answers live in the instance (lost on restart)
+static_dir = "../explorer"
+widget_dir = "../widget"
+
+[serving]
+challenge_ttl_s = 600
+pool_refresh_s = 3600     # the snapshot doesn't change while the instance runs
+science_share = 0.5
+recheck_rate = 0.05
+
+[http]
+cors_origins = ["https://sky-task-c4048.web.app", "https://sky-task-c4048.firebaseapp.com",
+                "http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5000"]
+
+[site_keys.demo]
+max_count = 10
+modes = ["none", "score", "token"]
+
+[site_keys.demo-game]
+max_count = 10
+modes = ["none", "score", "token"]
+
+[site_keys.inspector]
+max_count = 10
+modes = ["none", "score", "token"]

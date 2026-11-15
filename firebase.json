@@ -1,10 +1,33 @@
 {
   "hosting": {
     "public": "explorer",
-    "ignore": ["dev/**", "README.md", "**/.*"],
-    "predeploy": ["node -e \"require('fs').cpSync('widget','explorer/widget',{recursive:true})\""],
+    "ignore": [
+      "dev/**",
+      "README.md",
+      "**/.*"
+    ],
+    "predeploy": [
+      "node -e \"require('fs').cpSync('widget','explorer/widget',{recursive:true})\""
+    ],
     "headers": [
-      { "source": "/widget/**", "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }] }
+      {
+        "source": "/widget/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/v1/**",
+        "run": {
+          "serviceId": "skytask-api",
+          "region": "us-central1"
+        }
+      }
     ]
   }
 }

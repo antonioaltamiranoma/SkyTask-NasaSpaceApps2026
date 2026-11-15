@@ -1,0 +1,26 @@
+# Upload/build context for Cloud Run. deploy/_snapshot IS included on purpose (private image).
+.git
+.gitignore
+.gcloudignore
+.dockerignore
+.claude/
+.github/
+.firebase/
+.firebaserc
+firebase.json
+node_modules/
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+docs/
+explorer/dev/
+explorer/widget/
+generator/tests/
+generator/data/
+generator/sample_data/
+generator/export/
+generator/test_run/
+service/tests/
+service/settings.local.toml
+service/local_service.sqlite3*
+*.fits

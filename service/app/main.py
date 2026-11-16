@@ -170,7 +170,7 @@ def create_app(settings: Settings | None = None, store: TaskStore | None = None)
             pngs.put((cid, it["task_ref"]), expires, it["png"])
         return {"challenge_id": cid, "expires_at": _iso(expires), "tasks": [{
             "task_ref": it["task_ref"],
-            "image_url": str(request.url_for("challenge_image", challenge_id=cid, task_ref=it["task_ref"])),
+            "image_url": str(request.app.url_path_for("challenge_image", challenge_id=cid, task_ref=it["task_ref"])),
             "frame_count": int(it["task"]["frame_count"]),
             "frame_size": int(it["task"]["frame_size"]),
             "highlight": it["highlight"],

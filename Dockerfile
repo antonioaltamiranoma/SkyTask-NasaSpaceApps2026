@@ -14,4 +14,4 @@ COPY widget widget
 COPY deploy/_snapshot data
 ENV SKYTASK_SETTINGS=/app/service/settings.cloud.toml
 WORKDIR /app/service
-CMD exec uvicorn --factory app.main:create_app --host 0.0.0.0 --port ${PORT:-8080}
+CMD exec uvicorn --factory app.main:create_app --host 0.0.0.0 --port ${PORT:-8080} --proxy-headers --forwarded-allow-ips="*"

@@ -6,6 +6,28 @@ Somos un equipo de Quito que trabaja en el desafío Planet X and SPHEREx. Querem
 
 *Every task solved is one more pair of eyes on the infrared sky.*
 
+## Try it
+
+- **Classify SPHEREx images (citizen science):** https://sky-task-c4048.web.app/classify.html, with **live results**: answers, volunteers, and how often the crowd is right on hidden check tasks (known asteroids and stars), updated every 10 minutes
+- The widget inside a sign-up form (CAPTCHA-style box): https://sky-task-c4048.web.app/
+- The widget inside a game: https://sky-task-c4048.web.app/game.html
+- What the browser receives (public data only): https://sky-task-c4048.web.app/inspector.html
+- API: https://skytask-api-659703561463.us-central1.run.app/v1 (contract: [`docs/api-contract.yaml`](docs/api-contract.yaml); live count: `/v1/stats`)
+
+## How it works
+
+1. **Generator** (`generator/`, runs on a home PC): finds SPHEREx images through NASA/IPAC IRSA, aligns them, detects every
+   source and links dots that move in a straight line across 3+ frames. JPL's Small-Body Identification API labels known
+   asteroids. Known asteroids become *Moving* controls, flux-matched stars become *Not moving* controls (capped at
+   50 + 50, plus 12 + 12 holdout), and unexplained movers become science tasks.
+2. **Sync** (`deploy/sync_tasks.py`): pushes new tasks to Firestore and a private Cloud Storage bucket every 10 minutes.
+3. **API** (`service/`, FastAPI on Google Cloud Run): serves challenges that mix controls with at most 50% unsettled
+   science, renders a fresh image variant per request, never tells the browser which task is a control, and stores
+   every answer in Firestore.
+4. **Widget** (`widget/sky-task.js`): one script tag and one `<sky-task>` element, for any site or game.
+
+Measured on real SPHEREx data before the event: 14 of 14 known asteroids recovered blind in their fields, 0 false tracks.
+
 ## What's in this repository
 
 | Folder | What it is |

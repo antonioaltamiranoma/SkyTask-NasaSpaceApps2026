@@ -102,24 +102,13 @@ def _render(store: TaskStore, task: dict, seed: int):
 
 
 def _cloud_answer_sink(cloud, state):
-    """Durable copy of every graded answer in Firestore `answers` (server-only collection).
-    Holds no browser-visible data; the session id is stored hashed."""
-    import hashlib
+    """Durable copy of every graded answer in Firestore `answers` (server-only), queued and retried."""
+    from .answers import AnswerWriter, answer_rows
+    writer = AnswerWriter(cloud)
 
     def sink(ch, graded):
         site = (state.session(ch["session_id"]) or {}).get("site_key")
-        sess = hashlib.sha256(ch["session_id"].encode()).hexdigest()[:20]
-        now = datetime.now(timezone.utc).isoformat()
-        rows = [{"challenge_id": ch["challenge_id"], "session": sess, "site_key": site, "mode": ch["mode"],
-                 "task_id": g["task_id"], "kind": g["kind"], "holdout": bool(g["holdout"]), "choice": g["choice"],
-                 "correct": g["correct"], "counts_for_reliability": bool(g["counts_for_reliability"]),
-                 "elapsed_ms": int(g["elapsed_ms"]), "created_at": now} for g in graded]
-        def write():
-            try:
-                cloud.add("answers", rows)
-            except Exception:  # never fail the participant's submit; the instance copy still has it
-                log.exception("could not write %d answers to Firestore", len(rows))
-        threading.Thread(target=write, daemon=True).start()  # off the request path
+        writer.put(answer_rows(ch, graded, site))
     return sink
 
 

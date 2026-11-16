@@ -29,7 +29,7 @@ DEFAULT_DBS = [REPO.parent / "generator" / "data" / "skytask.sqlite3",
 
 
 def local_tasks(db: Path) -> dict[str, dict]:
-    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=30)
+    con = sqlite3.connect(db.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)
     con.row_factory = sqlite3.Row
     try:
         rows = con.execute(f"SELECT {','.join(POOL_COLS)} FROM tasks WHERE status='active'").fetchall()
@@ -54,8 +54,10 @@ def one_pass(c: Client, dbs: list[Path], allow_empty: bool) -> str:
     remote = {d["_id"]: d.get("status") for d in c.query("tasks", select=["status"])}
     add = [t for tid, t in local.items() if remote.get(tid) != "active"]
     retire = [tid for tid, st in remote.items() if st == "active" and tid not in local]
-    if not local and retire and not allow_empty:
-        return "no active local tasks found; refusing to retire the whole cloud pool (use --allow-empty)"
+    cloud_active = sum(1 for st in remote.values() if st == "active")
+    if retire and not allow_empty and (not local or len(retire) > 0.3 * cloud_active):
+        return (f"would retire {len(retire)} of {cloud_active} live tasks; refusing (is a database missing?). "
+                "Re-run with --allow-empty if that is really intended")
     now = datetime.now(timezone.utc).isoformat()
     added = 0
     for t in add:

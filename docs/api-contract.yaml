@@ -118,7 +118,10 @@ paths:
               schema: {type: array, items: {$ref: '#/components/schemas/FieldSummary'}}
   /stats:
     get:
-      summary: Totals for the explorer and the pitch.
+      summary: Public totals (cached ~60 s). Only aggregate counts that can't be diffed into answers.
+      description: |
+        Holdout accuracy is NOT public: exact holdout counters let a client diff its own submissions and learn
+        which of its tasks were controls. Read it server-side (Firestore `answers`). Candidate counts come with #6.
       responses:
         '200':
           content:
@@ -127,12 +130,6 @@ paths:
                 type: object
                 properties:
                   answers: {type: integer}
-                  participants: {type: integer}
-                  holdout_correct: {type: integer}
-                  holdout_total: {type: integer}
-                  candidates_open: {type: integer}
-                  candidates_confirmed: {type: integer}
-                  candidates_rejected: {type: integer}
 components:
   schemas:
     PublicTask:

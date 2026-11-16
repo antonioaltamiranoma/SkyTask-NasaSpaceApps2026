@@ -78,14 +78,18 @@
       w.setAttribute("result", "none");
       w.setAttribute("api", window.SKYTASK_API);
       w.addEventListener("sky-task-result", function () {
-        count += 3; mine.textContent = count;
+        count += parseInt(w.getAttribute("count"), 10) || 0; mine.textContent = count;
         try { sessionStorage.setItem("skytask-mine", String(count)); } catch (e) {}
         setTimeout(function () { stats(); slot.replaceChildren(); next(); }, 1200);
       });
-      w.addEventListener("sky-task-error", function () {
+      w.addEventListener("sky-task-error", function (e) {
+        var d = (e && e.detail) || {}, msg = String(d.code || d.error || d.status || "");
+        var done = msg.indexOf("503") >= 0 || msg.indexOf("no_tasks") >= 0 || msg.indexOf("not_enough") >= 0;
         var p = document.createElement("p");
         p.className = "lede";
-        p.textContent = "You’ve seen every patch of sky we have ready right now. Thank you! New tasks arrive as our pipeline processes more SPHEREx images, so come back later.";
+        p.textContent = done
+          ? "You’ve seen every patch of sky we have ready right now. Thank you! New tasks arrive as our pipeline processes more SPHEREx images, so come back later."
+          : "Something went wrong reaching Sky Task. Please reload the page in a minute.";
         setTimeout(function () { if (!slot.querySelector("p")) slot.appendChild(p); }, 400);
       });
       slot.appendChild(w);

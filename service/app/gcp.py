@@ -49,12 +49,15 @@ class GcpError(RuntimeError):
 
 
 class Client:
-    def __init__(self, project: str, bucket: str | None = None, token: Token | None = None, timeout: float = 30):
+    def __init__(self, project: str, bucket: str | None = None, token: Token | None = None, timeout: float = 30,
+                 retries: int = 3):
         self.project, self.bucket, self.token, self.timeout = project, bucket, token or Token(), timeout
+        self.retries = retries
         self.docs = f"https://firestore.googleapis.com/v1/projects/{project}/databases/(default)/documents"
 
     # ---------- HTTP ----------
-    def _call(self, method, url, body=None, raw=None, ctype="application/json", want_json=True, retries=3):
+    def _call(self, method, url, body=None, raw=None, ctype="application/json", want_json=True, retries=None):
+        retries = retries or self.retries
         data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
         for attempt in range(retries):
             headers = {"Authorization": "Bearer " + self.token.get(), "Content-Type": ctype}

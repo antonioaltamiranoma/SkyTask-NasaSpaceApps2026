@@ -114,10 +114,12 @@ def _cloud_answer_sink(cloud, state):
                  "task_id": g["task_id"], "kind": g["kind"], "holdout": bool(g["holdout"]), "choice": g["choice"],
                  "correct": g["correct"], "counts_for_reliability": bool(g["counts_for_reliability"]),
                  "elapsed_ms": int(g["elapsed_ms"]), "created_at": now} for g in graded]
-        try:
-            cloud.add("answers", rows)
-        except Exception:  # never fail the participant's submit; the local copy still has it
-            log.exception("could not write %d answers to Firestore", len(rows))
+        def write():
+            try:
+                cloud.add("answers", rows)
+            except Exception:  # never fail the participant's submit; the instance copy still has it
+                log.exception("could not write %d answers to Firestore", len(rows))
+        threading.Thread(target=write, daemon=True).start()  # off the request path
     return sink
 
 
@@ -132,16 +134,15 @@ class _Stats:
         with self._lock:
             if self._v is not None and time.monotonic() - self._at < 60:
                 return self._v
-            v = {"answers": 0, "holdout_correct": 0, "holdout_total": 0, "tasks_active": len(self.store.pool())}
+            # Public: only the total. Holdout/kind counts would let a bot diff its own submissions (answer oracle).
             try:
                 if self.cloud is not None:
-                    v["answers"] = self.cloud.count("answers")
-                    v["holdout_total"] = self.cloud.count("answers", {"holdout": True})
-                    v["holdout_correct"] = self.cloud.count("answers", {"holdout": True, "correct": 1})
+                    v = {"answers": self.cloud.count("answers")}
                 else:
-                    v["answers"] = self.state.one("SELECT COUNT(*) AS n FROM answers")["n"]
+                    v = {"answers": self.state.one("SELECT COUNT(*) AS n FROM answers")["n"]}
             except Exception:
                 log.exception("stats failed")
+                v = self._v or {"answers": None}  # keep the last good value
             self._v, self._at = v, time.monotonic()
             return v
 
@@ -153,7 +154,7 @@ def create_app(settings: Settings | None = None, store: TaskStore | None = None)
     cloud = None
     if s.store == "cloud":
         from .gcp import Client
-        cloud = Client(s.gcp_project, s.gcp_bucket)
+        cloud = Client(s.gcp_project, s.gcp_bucket, timeout=6, retries=2)  # serving path: fail fast
     if store is None and cloud is not None:
         from .taskstore import CloudTaskStore
         store = CloudTaskStore(cloud, s.pool_refresh_s)

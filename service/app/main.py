@@ -113,27 +113,34 @@ def _cloud_answer_sink(cloud, state):
 
 
 class _Stats:
-    """GET /v1/stats, cached for a minute. Cloud: counts from Firestore; local: from the service database."""
+    """GET /v1/stats. `answers` refreshes every minute; the results part (volunteers, holdout accuracy) every
+    10 minutes from answers older than 10 minutes (see answers.summarize). Last good values survive outages."""
 
     def __init__(self, cloud, state, store):
         self.cloud, self.state, self.store = cloud, state, store
-        self._v, self._at, self._lock = None, 0.0, threading.Lock()
+        self._lock = threading.Lock()
+        self._n, self._n_at = None, 0.0
+        self._res, self._res_at = {"volunteers": None, "holdout_accuracy_pct": None, "results_updated_at": None}, 0.0
 
     def get(self):
         with self._lock:
-            if self._v is not None and time.monotonic() - self._at < 60:
-                return self._v
-            # Public: only the total. Holdout/kind counts would let a bot diff its own submissions (answer oracle).
-            try:
-                if self.cloud is not None:
-                    v = {"answers": self.cloud.count("answers")}
-                else:
-                    v = {"answers": self.state.one("SELECT COUNT(*) AS n FROM answers")["n"]}
-            except Exception:
-                log.exception("stats failed")
-                v = self._v or {"answers": None}  # keep the last good value
-            self._v, self._at = v, time.monotonic()
-            return v
+            now = time.monotonic()
+            if self._n is None or now - self._n_at >= 60:
+                try:
+                    self._n = (self.cloud.count("answers") if self.cloud is not None else
+                               self.state.one("SELECT COUNT(*) AS n FROM answers")["n"])
+                except Exception:
+                    log.exception("stats count failed")
+                self._n_at = now
+            if self.cloud is not None and (self._res_at == 0.0 or now - self._res_at >= 600):
+                try:
+                    from .answers import summarize
+                    rows = self.cloud.query("answers", select=["session", "holdout", "correct", "created_at"])
+                    self._res = summarize(rows, datetime.now(timezone.utc))
+                except Exception:
+                    log.exception("stats results failed")
+                self._res_at = now
+            return {"answers": self._n, **self._res}
 
 
 def create_app(settings: Settings | None = None, store: TaskStore | None = None) -> FastAPI:

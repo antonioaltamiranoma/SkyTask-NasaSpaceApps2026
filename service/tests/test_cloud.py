@@ -89,3 +89,17 @@ def test_answer_writer_caps_memory():
     w = AnswerWriter(FakeCloud(), max_pending=5, start=False)
     w.put([(f"id{i}", {}) for i in range(8)])
     assert w.pending() == 5 and w.dropped == 3
+
+
+def test_summarize_delays_rounds_and_needs_sample():
+    from datetime import datetime, timedelta, timezone
+    from app.answers import summarize
+    now = datetime(2026, 11, 16, 3, 0, tzinfo=timezone.utc)
+    old = (now - timedelta(minutes=30)).isoformat()
+    new = (now - timedelta(minutes=2)).isoformat()
+    rows = [{"session": f"s{i % 7}", "holdout": True, "correct": int(i % 4 != 0), "created_at": old} for i in range(60)]
+    r = summarize(rows, now)
+    assert r["volunteers"] == 7 and r["holdout_accuracy_pct"] == 75
+    fresh = [{"session": "bot", "holdout": True, "correct": 0, "created_at": new} for _ in range(40)]
+    assert summarize(rows + fresh, now)["holdout_accuracy_pct"] == 75   # recent answers don't move the number yet
+    assert summarize(rows[:49], now)["holdout_accuracy_pct"] is None    # too few holdout answers: no number

@@ -2,9 +2,11 @@
 // (after the <sky-task> elements, before the deferred widget script runs).
 // Default: same origin — the local service or the mock server serve both the pages and /v1.
 // Override for this tab with ?api=https://SERVICE.run.app/v1
-// When the site moves to Firebase Hosting, set DEFAULT_API to the Cloud Run URL + "/v1".
+// On *.web.app / *.firebaseapp.com it uses the Cloud Run URL below.
 (function () {
-  var DEFAULT_API = location.origin + "/v1";
+  // On Firebase Hosting the pages call the Cloud Run API cross-origin, like any host site embedding the widget.
+  var CLOUD_API = "https://skytask-api-659703561463.us-central1.run.app/v1";
+  var DEFAULT_API = /(\.web\.app|\.firebaseapp\.com)$/.test(location.hostname) ? CLOUD_API : location.origin + "/v1";
   var q = new URLSearchParams(location.search).get("api");
   var saved = null;
   try {

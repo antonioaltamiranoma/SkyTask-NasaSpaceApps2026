@@ -8,7 +8,8 @@ info:
     field ids; images are request-time variants of stored master strips; every challenge has >= 1 control
     and at most 50% unsettled science tasks; one task per field per participant.
 servers:
-  - url: https://SERVICE_URL/v1
+  - url: https://skytask-api-659703561463.us-central1.run.app/v1
+    description: Cloud Run (demo). Demo pages at https://sky-task-c4048.web.app call it cross-origin.
 paths:
   /sessions:
     post:

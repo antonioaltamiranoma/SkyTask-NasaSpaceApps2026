@@ -70,6 +70,10 @@ class State:
     def session(self, session_id):
         return self.one("SELECT * FROM sessions WHERE session_id=?", (session_id,))
 
+    def seen_tasks(self, session_id) -> set:
+        return {r["task_id"] for r in self.q("SELECT ct.task_id FROM challenge_tasks ct JOIN challenges c "
+                                              "ON c.challenge_id = ct.challenge_id WHERE c.session_id=?", (session_id,))}
+
     def seen_fields(self, session_id) -> set:
         return {r["field_id"] for r in self.q("SELECT field_id FROM session_fields WHERE session_id=?", (session_id,))}
 

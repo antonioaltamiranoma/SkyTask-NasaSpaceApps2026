@@ -17,8 +17,8 @@ science_share = 0.5
 recheck_rate = 0.05
 
 [http]
-cors_origins = ["https://sky-task-c4048.web.app", "https://sky-task-c4048.firebaseapp.com",
-                "http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:5000"]
+# Any site may embed the widget (no cookies or credentials are used; site keys decide what a site may ask for).
+cors_origins = ["*"]
 
 [site_keys.demo]
 max_count = 10

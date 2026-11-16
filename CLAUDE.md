@@ -15,7 +15,7 @@ Sky Task turns NASA SPHEREx infrared images into short "blink" micro-tasks: a fe
 - **Consensus:** reliability r = α/(α+β) with prior α=3, β=1; vote weight w = max(0, 2r−1); confirmed at score ≥ 0.8 with ≥ 2 weighted votes, rejected at ≤ 0.2; recomputed in batches.
 - **Serving science:** prioritise uncertain tasks (few votes, score near 0.5); stop serving settled tasks except ~5% re-checks.
 - **Control pool:** 50 Moving + 50 Not moving active, plus 12 + 12 holdout (configurable). Holdout controls never affect anyone's weight; they only measure accuracy.
-- **One task per field per participant** (tasks of one field share stars).
+- **One task per field per participant** (tasks of one field share stars). Always strict for `token`. For `none`/`score`, once a participant has seen every field, fields may come back but never a task they already saw, still one per field within a challenge (approved by Antonio, Nov 15).
 - **Disclosure:** the widget always shows "Helps analyze NASA SPHEREx data". No NASA logos.
 
 ## Source of truth

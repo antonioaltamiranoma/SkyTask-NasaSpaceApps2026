@@ -42,6 +42,70 @@
 <main class="wrap">
   <h1>A sign-up form with Sky Task in it</h1>
   <p class="lede">This is a demo page. The form below is fake and sends nothing anywhere. It shows how a site drops in the <code>&lt;sky-task&gt;</code> widget with one script tag and one element, the way it would add a CAPTCHA box.</p>
+  <section class="embed" aria-labelledby="embed-h">
+    <h2 id="embed-h">Add Sky Task to your site</h2>
+    <p class="fine" style="margin:0">Like a CAPTCHA box: one script tag, one element. The widget brings its own look (no CSS needed), and every answer helps analyze NASA SPHEREx data.</p>
+    <ol>
+      <li><b>Load the widget</b> once per page, anywhere (usually in <code>&lt;head&gt;</code>):
+        <pre id="emb1">&lt;script src="https://sky-task-c4048.web.app/widget/sky-task.js" defer&gt;&lt;/script&gt;</pre>
+        <button class="copy" type="button" data-copy="emb1">Copy</button></li>
+      <li><b>Put the element</b> where the task should appear:
+        <pre id="emb2">&lt;sky-task api="https://skytask-api-659703561463.us-central1.run.app/v1"
+          site-key="demo" count="3" result="score"&gt;&lt;/sky-task&gt;</pre>
+        <button class="copy" type="button" data-copy="emb2">Copy</button>
+        <div class="ref-wrap"><table class="ref">
+          <caption>Attributes</caption>
+          <thead><tr><th>Attribute</th><th>Required</th><th>Default</th><th>What it is for</th></tr></thead>
+          <tbody>
+            <tr><td><code>api</code></td><td>Yes, on your site</td><td>this page’s own <code>/v1</code></td>
+              <td>Address of the Sky Task API. On any site other than this one, set it to <code>https://skytask-api-659703561463.us-central1.run.app/v1</code>, otherwise the widget looks for the API on your own server.</td></tr>
+            <tr><td><code>site-key</code></td><td>Yes</td><td>none</td>
+              <td>Says which site is asking. The server uses it to decide what that site may request (how many tasks at most, which <code>result</code> modes) and to tell sites apart in the data. Public keys you can use now: <code>demo</code> and <code>demo-game</code> (up to 10 tasks, <code>none</code> or <code>score</code>). It is not a secret; it is visible in your page.</td></tr>
+            <tr><td><code>count</code></td><td>No</td><td><code>2</code></td>
+              <td>How many tasks one challenge has, 2 to 10. More tasks = more science per visit but a longer wait for the person. 2–3 suits a form; 3–5 suits a game break. The server may lower it to the site key’s maximum.</td></tr>
+            <tr><td><code>result</code></td><td>No</td><td><code>none</code></td>
+              <td>What your page gets back when the person finishes.<br><code>none</code>: nothing to grade, answers are just recorded (pure citizen science).<br><code>score</code>: a percentage <code>0, 25, 50, 75 or 100</code> you can turn into a reward in a game; it never says which answer was right.<br><code>token</code>: a pass token for CAPTCHA-style checks; not available yet (the API answers <code>501</code>).</td></tr>
+            <tr><td><code>theme</code></td><td>No</td><td><code>auto</code></td>
+              <td>Colours: <code>light</code>, <code>dark</code>, or <code>auto</code> to follow the visitor’s system setting. Fine-tune colours with CSS variables such as <code>--sky-task-accent</code> (see the widget README).</td></tr>
+            <tr><td><code>layout</code></td><td>No</td><td><code>box</code></td>
+              <td>Shape. <code>box</code>: a card up to 380 px wide, for forms and sidebars. <code>screen</code>: fills whatever space you give it and uses two columns from 440 px wide, for game panels and bottom sheets.</td></tr>
+          </tbody>
+        </table></div>
+        <p class="fine">Changing <code>api</code>, <code>site-key</code>, <code>count</code> or <code>result</code> on the element starts a fresh challenge. The disclosure line “Helps analyze NASA SPHEREx data” always shows and can’t be hidden.</p></li>
+      <li><b>React to the answer</b> (optional):
+        <pre id="emb3">const box = document.querySelector("sky-task");
+box.addEventListener("sky-task-result", (e) =&gt; {
+  // result="none":  e.detail = { mode: "none",  recorded: true }
+  // result="score": e.detail = { mode: "score", score: 75 }
+  if (e.detail.mode === "score") giveReward(e.detail.score);
+});
+box.addEventListener("sky-task-error", (e) =&gt; {
+  // e.detail = { stage, status, message }
+  console.warn("Sky Task:", e.detail);
+});</pre>
+        <button class="copy" type="button" data-copy="emb3">Copy</button>
+        <div class="ref-wrap"><table class="ref">
+          <caption>Events (both bubble out of the element)</caption>
+          <thead><tr><th>Event</th><th>When</th><th><code>detail</code> fields</th></tr></thead>
+          <tbody>
+            <tr><td><code>sky-task-result</code></td><td>The person answered every task and the API accepted them.</td>
+              <td><code>mode</code>: the <code>result</code> you asked for.<br><code>recorded</code> (mode <code>none</code>): <code>true</code> when the answers were stored.<br><code>score</code> (mode <code>score</code>): 0–100 in steps of 25; known tasks count by correctness, open science tasks count as a coin flip because nobody knows the answer yet.</td></tr>
+            <tr><td><code>sky-task-error</code></td><td>Something failed; the widget shows a “Try again” button itself.</td>
+              <td><code>stage</code>: where it failed: <code>session</code>, <code>challenge</code>, <code>image</code> or <code>submit</code>.<br><code>status</code>: the HTTP status, if any. <code>403</code> = site key unknown or mode not allowed for it; <code>410</code> = challenge expired (10 minutes); <code>503</code> = this visitor has seen every task we have right now; <code>501</code> = <code>token</code> mode not available yet.<br><code>message</code>: a readable explanation for your logs.</td></tr>
+          </tbody>
+        </table></div>
+        <p class="fine">Methods: <code>box.reset()</code> starts a new challenge. Full reference: the <a href="https://github.com/antonioaltamiranoma/SkyTask-NasaSpaceApps2026/blob/main/widget/README.md">widget README</a> and the <a href="https://github.com/antonioaltamiranoma/SkyTask-NasaSpaceApps2026/blob/main/docs/api-contract.yaml">API contract</a>.</p></li>
+    </ol>
+  </section>
+  <script>
+    document.querySelectorAll(".embed .copy").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var t = document.getElementById(b.dataset.copy).textContent;
+        try { navigator.clipboard.writeText(t).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); }); } catch (e) {}
+      });
+    });
+  </script>
+
 
   <div class="grid">
     <form class="card" id="signup" novalidate>

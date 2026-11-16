@@ -200,9 +200,15 @@ def create_app(settings: Settings | None = None, store: TaskStore | None = None)
         count = min(body.count, key.max_count)
         rng = np.random.default_rng(secrets.randbits(64))
         with session_locks.get(body.session_id):
+            pool, cons, seen = store.pool(), state.consensus(), state.seen_fields(body.session_id)
             try:
-                picked = pick_tasks(store.pool(), state.consensus(), state.seen_fields(body.session_id), count, rng,
-                                    s.science_share, s.recheck_rate)
+                try:
+                    picked = pick_tasks(pool, cons, seen, count, rng, s.science_share, s.recheck_rate)
+                except NotEnoughTasks:
+                    if body.result == "token":  # CAPTCHA keeps the strict one-task-per-field rule
+                        raise
+                    picked = pick_tasks(pool, cons, seen, count, rng, s.science_share, s.recheck_rate,
+                                        seen_tasks=state.seen_tasks(body.session_id), reuse_fields=True)
             except NotEnoughTasks as e:
                 log.info("not enough tasks for session %s: %s", body.session_id[:6], e)
                 # the public message stays generic: counts would reveal the pool / mix

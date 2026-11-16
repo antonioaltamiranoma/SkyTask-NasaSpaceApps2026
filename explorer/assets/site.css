@@ -40,3 +40,22 @@ h2 { font-size: 1.125rem; margin: 28px 0 8px; }
 .demo-note { font-size: .8125rem; color: var(--muted); }
 
 :focus-visible { outline: 2px solid var(--ir); outline-offset: 2px; }
+/* "Add Sky Task to your site" box (index + inspector) */
+.embed { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; margin: 0 0 24px; }
+.embed h2 { margin: 0 0 6px; font-size: 1.125rem; }
+.embed ol { margin: 8px 0 0; padding-left: 1.2em; }
+.embed li { margin: 10px 0; }
+.embed pre { margin: 6px 0 0; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--page);
+             font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.embed .copy { font: inherit; font-size: .8125rem; margin-top: 6px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: inherit; cursor: pointer; }
+.embed dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 8px 0 0; font-size: .875rem; }
+.embed dt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
+.embed dd { margin: 0; color: var(--muted); }
+.fine { font-size: .8125rem; color: var(--muted); }
+.embed .ref-wrap { overflow-x: auto; margin-top: 10px; }
+.embed table.ref { border-collapse: collapse; width: 100%; font-size: .875rem; min-width: 560px; }
+.embed table.ref caption { text-align: left; font-weight: 650; padding: 0 0 6px; }
+.embed table.ref th, .embed table.ref td { text-align: left; vertical-align: top; padding: 8px 10px; border-top: 1px solid var(--line); }
+.embed table.ref th { font-size: .8125rem; color: var(--muted); font-weight: 600; }
+.embed table.ref td:first-child { white-space: nowrap; }
+.embed code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }

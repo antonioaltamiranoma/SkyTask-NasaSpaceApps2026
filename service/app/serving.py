@@ -24,10 +24,26 @@ def settled_answer(task_id, consensus: dict):
     return SETTLED_ANSWER.get(c["status"]) if c else None
 
 
-def pick_tasks(pool, consensus, seen_fields, count, rng, science_share=0.5, recheck_rate=0.05):
-    """-> list of (task, settled_answer_or_None) in random order. Raises NotEnoughTasks."""
-    used = set(seen_fields)
-    avail = [t for t in pool if t["field_id"] not in used]
+def pick_tasks(pool, consensus, seen_fields, count, rng, science_share=0.5, recheck_rate=0.05,
+               seen_tasks=None, reuse_fields=False):
+    """-> list of (task, settled_answer_or_None) in random order. Raises NotEnoughTasks.
+
+    reuse_fields=False (strict, always for CAPTCHA tokens): one task per field per participant.
+    reuse_fields=True (science/games, once the strict pick fails): fields may come back, never a task the
+    participant already saw (`seen_tasks`), still one task per field within the challenge, and fields the
+    participant hasn't seen are preferred."""
+    seen_fields = set(seen_fields)
+    if reuse_fields:
+        seen_tasks = set(seen_tasks or ())
+        used = set()
+        avail = [t for t in pool if t["task_id"] not in seen_tasks]
+    else:
+        used = set(seen_fields)
+        avail = [t for t in pool if t["field_id"] not in used]
+
+    def fresh_first(opts):  # prefer fields this participant hasn't seen yet
+        fresh = [t for t in opts if t["field_id"] not in seen_fields]
+        return fresh or opts
     science = [t for t in avail if t["kind"] == "science"]
     unsettled = [t for t in science if settled_answer(t["task_id"], consensus) is None]
     rechecks = [t for t in science if settled_answer(t["task_id"], consensus) is not None]
@@ -38,7 +54,7 @@ def pick_tasks(pool, consensus, seen_fields, count, rng, science_share=0.5, rech
         score = c.get("score")
         return (math.floor(votes), abs(score - 0.5) if score is not None else 0.0, rng.random())
 
-    unsettled.sort(key=priority)
+    unsettled.sort(key=lambda t: (t["field_id"] in seen_fields, *priority(t)))
     rechecks.sort(key=lambda t: rng.random())
 
     max_unsettled = min(int(math.floor(count * science_share)), count - 1)
@@ -72,7 +88,7 @@ def pick_tasks(pool, consensus, seen_fields, count, rng, science_share=0.5, rech
         second = "control_neg" if first == "control_pos" else "control_pos"
         pick = None
         for kind in (first, second):
-            opts = [t for t in controls[kind] if t["field_id"] not in used]
+            opts = fresh_first([t for t in controls[kind] if t["field_id"] not in used])
             if opts:
                 pick = opts[int(rng.integers(len(opts)))]
                 break

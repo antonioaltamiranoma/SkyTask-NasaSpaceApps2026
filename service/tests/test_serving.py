@@ -125,3 +125,30 @@ def test_grade_unsettled_science_random():
     assert vals == {50, 100}
     for p in vals:
         assert p % 25 == 0
+
+
+def test_field_reuse_after_all_fields_seen(pool):
+    """Science/games: once every field was seen, fields come back but never an already-seen task."""
+    tasks, _ = pool
+    all_fields = {t["field_id"] for t in tasks}
+    seen_tasks = {t["task_id"] for t in tasks[::2]}
+    for seed in range(30):
+        picked = pick_tasks(tasks, {}, all_fields, 3, np.random.default_rng(seed),
+                            seen_tasks=seen_tasks, reuse_fields=True)
+        ids = [t["task_id"] for t, _ in picked]
+        fields = [t["field_id"] for t, _ in picked]
+        assert not (set(ids) & seen_tasks), "never repeat a task"
+        assert len(fields) == len(set(fields)), "still one task per field within a challenge"
+        assert any(k.startswith("control") for k in kinds(picked))
+
+
+def test_field_reuse_prefers_unseen_fields(pool):
+    tasks, _ = pool
+    fields = sorted({t["field_id"] for t in tasks})
+    seen = set(fields[:-3])                       # only 3 fields not seen yet
+    for seed in range(30):
+        picked = pick_tasks(tasks, {}, seen, 2, np.random.default_rng(seed), seen_tasks=set(), reuse_fields=True)
+        picked_fields = {t["field_id"] for t, _ in picked}
+        controls_unseen = [t for t in tasks if t["field_id"] not in seen and t["kind"].startswith("control")]
+        if len({t["field_id"] for t in controls_unseen}) >= 2:
+            assert picked_fields <= set(fields[-3:]) | {t["field_id"] for t in tasks if t["kind"] == "science"}

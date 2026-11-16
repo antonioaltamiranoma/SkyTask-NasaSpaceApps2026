@@ -54,6 +54,40 @@
 <main class="wrap">
   <h1>What the browser receives</h1>
   <p class="lede">This page calls the API itself and shows every response exactly as it arrives, with image sizes and timings. Use it to check that nothing in the public data hints at which tasks are controls.</p>
+  <section class="embed" aria-labelledby="embed-h">
+    <h2 id="embed-h">Add Sky Task to your site</h2>
+    <p class="fine" style="margin:0">Like a CAPTCHA box: one script tag, one element. The widget brings its own look; no CSS needed.</p>
+    <ol>
+      <li>Load the widget once per page:
+        <pre id="emb1">&lt;script src="https://sky-task-c4048.web.app/widget/sky-task.js" defer&gt;&lt;/script&gt;</pre>
+        <button class="copy" type="button" data-copy="emb1">Copy</button></li>
+      <li>Put the element where the task should appear:
+        <pre id="emb2">&lt;sky-task api="https://skytask-api-659703561463.us-central1.run.app/v1"
+          site-key="demo" count="3" result="score"&gt;&lt;/sky-task&gt;</pre>
+        <button class="copy" type="button" data-copy="emb2">Copy</button>
+        <dl>
+          <dt>site-key</dt><dd>identifies your site (demo keys: <code>demo</code>, <code>demo-game</code>)</dd>
+          <dt>count</dt><dd>tasks per challenge, 2–10</dd>
+          <dt>result</dt><dd><code>none</code> (science: just record) or <code>score</code> (games: 0–100%); <code>token</code> for CAPTCHA is future work</dd>
+          <dt>theme</dt><dd><code>light</code>, <code>dark</code> or <code>auto</code></dd>
+          <dt>layout</dt><dd><code>box</code> (form) or <code>screen</code> (inside a game panel)</dd>
+        </dl></li>
+      <li>React to the answer (optional):
+        <pre id="emb3">document.querySelector("sky-task").addEventListener("sky-task-result", (e) =&gt; {
+  console.log(e.detail);   // {"recorded": true}  or  {"score": 75}
+});</pre>
+        <button class="copy" type="button" data-copy="emb3">Copy</button></li>
+    </ol>
+  </section>
+  <script>
+    document.querySelectorAll(".embed .copy").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var t = document.getElementById(b.dataset.copy).textContent;
+        try { navigator.clipboard.writeText(t).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy"; }, 1500); }); } catch (e) {}
+      });
+    });
+  </script>
+
 
   <form class="controls" id="f">
     <label>API base <input class="api-in" name="api" id="api"></label>

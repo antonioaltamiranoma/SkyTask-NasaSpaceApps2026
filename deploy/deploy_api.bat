@@ -1,10 +1,9 @@
 @echo off
-rem Deploy the Sky Task API to Cloud Run (card #3, phase A). Run from anywhere:  deploy\deploy_api.bat [GENERATOR_DATA_DIR]
+rem Deploy the Sky Task API to Cloud Run (tasks come from Firestore; nothing is baked in). Run from anywhere:  deploy\deploy_api.bat
 setlocal
 cd /d "%~dp0\.."
 set PROJECT=sky-task-c4048
 set REGION=us-central1
-python deploy\make_snapshot.py %1 || goto :error
 call gcloud run deploy skytask-api --source . --project %PROJECT% --region %REGION% ^
   --service-account skytask-api@%PROJECT%.iam.gserviceaccount.com ^
   --allow-unauthenticated --max-instances 1 --min-instances 1 --memory 512Mi --cpu 1 --timeout 60 ^

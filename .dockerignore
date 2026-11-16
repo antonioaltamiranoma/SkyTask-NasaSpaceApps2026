@@ -1,4 +1,4 @@
-# Upload/build context for Cloud Run. deploy/_snapshot IS included on purpose (private image).
+# Upload/build context for Cloud Run. No task data is uploaded.
 .git
 .gitignore
 .gcloudignore
@@ -32,3 +32,4 @@ service-account*.json
 firebase-adminsdk*.json
 *.jsonl
 service/*.sqlite3*
+deploy/_snapshot/

@@ -2,7 +2,7 @@
 
 **NASA Space Apps Challenge 2026 · Challenge: Planet X and SPHEREx · Team Sky Task (Quito, Ecuador)**
 
-Somos un equipo de Quito que trabaja en el desafío Planet X and SPHEREx. Queremos acercar los datos infrarrojos de la misión SPHEREx de la NASA a cualquier persona, convirtiendo unos segundos de atención en una contribución real a la ciencia.
+We are a team from Quito working on the Planet X and SPHEREx challenge. We want to bring NASA's SPHEREx infrared data to anyone, turning a few seconds of attention into a real contribution to science.
 
 *Every task solved is one more pair of eyes on the infrared sky.*
 

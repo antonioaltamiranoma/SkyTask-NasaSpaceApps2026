@@ -1,0 +1,7 @@
+.venv/
+data/
+cache/
+test_run/
+_vm_test_junk/
+__pycache__/
+sample_data/

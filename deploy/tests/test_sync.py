@@ -46,3 +46,13 @@ def test_sync_uploads_once_and_retires_safely(tmp_path):
     msg = sync_tasks.one_pass(c, [db], allow_empty=False)
     assert "refusing" in msg
     assert sum(1 for d in c.cols["tasks"].values() if d["status"] == "active") == 9
+
+
+def test_sample_db_dropped_once_generator_pool_is_full(tmp_path, monkeypatch):
+    data = _db(tmp_path / "gen" / "data", [f"d{i}" for i in range(3)])
+    sample = _db(tmp_path / "gen" / "sample_data", ["s0"])
+    monkeypatch.setattr(sync_tasks, "DATA_DB", data)
+    monkeypatch.setattr(sync_tasks, "SAMPLE_DB", sample)
+    assert sync_tasks.default_dbs() == [data, sample]
+    monkeypatch.setattr(sync_tasks, "FULL_CONTROL_POOL", 3)
+    assert sync_tasks.default_dbs() == [data]

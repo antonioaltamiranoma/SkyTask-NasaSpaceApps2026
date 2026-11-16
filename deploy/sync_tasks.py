@@ -24,8 +24,27 @@ from app.taskstore import POOL_COLS, task_to_doc, JSON_COLS  # noqa: E402
 
 import json  # noqa: E402
 
-DEFAULT_DBS = [REPO.parent / "generator" / "data" / "skytask.sqlite3",
-               REPO.parent / "generator" / "sample_data" / "skytask.sqlite3"]
+DATA_DB = REPO.parent / "generator" / "data" / "skytask.sqlite3"
+SAMPLE_DB = REPO.parent / "generator" / "sample_data" / "skytask.sqlite3"
+FULL_CONTROL_POOL = 50 + 50 + 12 + 12  # generator settings.toml [controls] targets
+
+
+def default_dbs() -> list[Path]:
+    """The generator's database, plus the sample database only until the generator's own control pool is full
+    (otherwise the cloud would hold more controls than the 50+50+12+12 cap)."""
+    dbs = [p for p in (DATA_DB,) if p.exists()]
+    if SAMPLE_DB.exists():
+        n = 0
+        if DATA_DB.exists():
+            con = sqlite3.connect(DATA_DB.resolve().as_uri() + "?mode=ro", uri=True, timeout=30)
+            try:
+                n = con.execute("SELECT COUNT(*) FROM tasks WHERE status='active' AND kind IN "
+                                "('control_pos','control_neg')").fetchone()[0]
+            finally:
+                con.close()
+        if n < FULL_CONTROL_POOL:
+            dbs.append(SAMPLE_DB)
+    return dbs
 
 
 def local_tasks(db: Path) -> dict[str, dict]:
@@ -83,12 +102,12 @@ def main():
     ap.add_argument("--loop", type=int, default=0, help="seconds between passes (0 = run once)")
     ap.add_argument("--allow-empty", action="store_true")
     a = ap.parse_args()
-    dbs = [Path(p) for p in a.db] if a.db else [p for p in DEFAULT_DBS if p.exists()]
-    if not dbs:
-        sys.exit("No generator database found. Pass --db PATH\\TO\\skytask.sqlite3")
-    print("Syncing from:", *dbs, sep="\n  ")
     c = Client(a.project, a.bucket)
     while True:
+        dbs = [Path(p) for p in a.db] if a.db else default_dbs()  # re-checked every pass
+        if not dbs:
+            sys.exit("No generator database found. Pass --db PATH\\TO\\skytask.sqlite3")
+        print("Syncing from:", ", ".join(p.parent.name for p in dbs))
         try:
             print(time.strftime("%H:%M:%S"), one_pass(c, dbs, a.allow_empty), flush=True)
         except Exception as e:  # keep looping through network hiccups

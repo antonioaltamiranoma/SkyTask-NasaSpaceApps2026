@@ -1,0 +1,11 @@
+# Versions tested in the Linux VM (Python 3.10.12), Nov 14, 2026. All publish Windows wheels for Python 3.10.
+numpy==2.2.6
+scipy==1.15.3
+astropy==6.1.7
+astroquery==0.4.11
+pyvo==1.10.0
+reproject==0.14.1
+sep==1.4.1
+pillow==12.3.0
+requests==2.34.2
+tomli==2.5.0; python_version < "3.11"

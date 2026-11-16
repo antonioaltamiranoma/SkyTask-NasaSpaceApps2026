@@ -1,0 +1,96 @@
+# skytask_gen settings. Paths are relative to this file's folder unless absolute ("~" is allowed).
+# Every value here has a built-in default (skytask_gen/config.py), so you can delete lines you don't need.
+
+[general]
+data_dir = "data"            # SQLite db, master strips, exports, logs
+cache_dir = "cache"          # FITS cutouts + JPL answers (cleaned up as fields finish)
+log_level = "INFO"           # DEBUG, INFO, WARNING
+store_backend = "local"      # "local" now; "firebase" later (stub, not implemented)
+seed = 0                     # 0 = different random sky every run; any other number = reproducible
+
+[run]
+max_runtime_minutes = 0      # 0 = run until Ctrl+C
+max_fields_per_run = 0       # 0 = no limit
+pause_between_fields_s = 2
+max_field_attempts = 3       # a field that fails (network, JPL) is retried this many times
+
+[sky]
+min_abs_galactic_b = 25      # stay away from the crowded Milky Way
+max_abs_ecliptic_beta = 20   # stay near the ecliptic, where asteroids are
+field_size_arcmin = 12       # aligned field size (must be larger than window + 2*margin = 96 px = 9.8')
+
+[survey]                     # main mode: random sky positions -> new science candidates
+enabled = true
+collections = ["spherex_dr1", "spherex_qr3"]   # IRSA SIA collections of SPHEREx spectral images
+min_visits = 3
+max_visits = 4
+min_visit_gap_min = 90       # one orbit is ~97 min
+max_span_hours = 14
+visit_split_min = 30         # exposures closer than this belong to one visit
+detector_preference = ["D2", "D1", "D3", "D6", "D5", "D4"]
+max_cutout_tries_per_visit = 2
+min_field_coverage = 0.9
+positions_per_attempt = 8    # random positions tried per new survey field before giving up for this round
+sia_failures_before_fallback = 3   # if IRSA SIA keeps failing, use MOST-anchored fields instead (see README)
+fallback_asteroid_max_number = 200000
+
+[controls]                   # answer-key pools (counts of ACTIVE tasks)
+moving_target = 50
+not_moving_target = 50
+holdout_moving_target = 12
+holdout_not_moving_target = 12
+reserve_max_per_kind = 20    # extra controls kept inactive (to replace retired ones); 0 = discard
+negatives_per_moving_control = 1
+flux_ratio_min = 0.5         # Not-moving star flux / asteroid flux
+flux_ratio_max = 2.0
+negatives_from_moverless_fields = true   # survey fields without movers may supply Not-moving controls
+
+[topup]                      # fallback: targeted fields around known bright asteroids (IRSA MOST)
+enabled = true
+every_n_fields = 3           # while the Moving pool is below target, every Nth field is a top-up field
+max_vmag = 16.7
+asteroid_number_min = 1
+asteroid_number_max = 3000
+max_fields_per_asteroid = 2
+min_step_px = 4
+max_total_px = 50
+
+[science]                    # verified pipeline-prep values; change only with a reason
+thresh_sigma = 5.0
+r_static_px = 1.0
+tol_link_px = 2.0
+rate_min_deg_day = 0.05
+rate_max_deg_day = 0.5
+fit_rms_max_px = 1.2
+r_known_px = 2.0
+blend_ratio = 3.0
+max_science_per_field = 3
+keep_pairs = true            # 2-frame pairs become low-confidence science tasks
+pair_require_outlier = true  # both pair detections must carry SPHEREx's OUTLIER flag (cuts noise pairs; new)
+pair_max_flux_ratio = 4.0    # and have similar brightness (new)
+jpl_vmag_limit = 21
+
+[tasks]
+window_px = 64
+ring_radius_px = 4
+master_margin_px = 16        # extra pixels per side stored around the 64 px window
+edge_px = 8
+min_frames = 3
+
+[rate_limits]
+jpl_max_parallel = 1         # JPL rate-limits above ~2 parallel requests
+jpl_pause_s = 5
+jpl_timeout_s = 150
+jpl_max_retries = 4
+jpl_backoff_s = 60           # doubled after every HTTP 429
+jpl_expected_s = 75          # typical call duration; with a time budget, no call starts that would overrun it
+irsa_pause_s = 1.0
+irsa_timeout_s = 120
+
+[cache]
+cleanup_after_field = true
+max_cache_mb = 2000
+
+[seed_data]
+import_legacy = true         # import the 20 pipeline-prep tasks_v8 controls once (marked legacy)
+legacy_dir = "../pipeline-prep/tasks_v8"

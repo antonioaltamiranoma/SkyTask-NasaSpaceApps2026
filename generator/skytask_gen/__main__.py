@@ -29,6 +29,11 @@ def main(argv=None):
 
     if a.cmd == "run":
         from .run import Generator
+        from .watchdog import Watchdog, install_default_http_timeout
+        install_default_http_timeout()
+        stall_min = float(cfg.get("run", {}).get("stall_restart_minutes", 15))
+        if stall_min > 0:
+            Watchdog(stall_s=stall_min * 60).start()
         Generator(cfg).run(max_fields=a.max_fields, max_minutes=a.minutes)
     elif a.cmd == "status":
         from .status import status

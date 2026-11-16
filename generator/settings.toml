@@ -13,6 +13,7 @@ max_runtime_minutes = 0      # 0 = run until Ctrl+C
 max_fields_per_run = 0       # 0 = no limit
 pause_between_fields_s = 2
 max_field_attempts = 3       # a field that fails (network, JPL) is retried this many times
+stall_restart_minutes = 15   # no log line for this long = stuck network call: exit and let start.bat restart (0 = off)
 
 [sky]
 min_abs_galactic_b = 25      # stay away from the crowded Milky Way

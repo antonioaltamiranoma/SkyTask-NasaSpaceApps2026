@@ -22,9 +22,19 @@ if not exist ".venv\.installed" (
   )
   echo ok> ".venv\.installed"
 )
-if "%~1"=="" (
-  ".venv\Scripts\python.exe" -m skytask_gen run
-  if errorlevel 1 pause
-) else (
+if not "%~1"=="" (
   ".venv\Scripts\python.exe" -m skytask_gen %*
+  exit /b
 )
+:run
+".venv\Scripts\python.exe" -m skytask_gen run
+if errorlevel 4 goto failed
+if errorlevel 3 (
+  echo Generator was stuck on a network call - restarting in 10 seconds...
+  timeout /t 10 /nobreak >nul
+  goto run
+)
+if errorlevel 1 goto failed
+exit /b 0
+:failed
+pause

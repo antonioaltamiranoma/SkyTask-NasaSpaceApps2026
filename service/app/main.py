@@ -101,16 +101,71 @@ def _render(store: TaskStore, task: dict, seed: int):
     return png, hl, variant
 
 
+def _cloud_answer_sink(cloud, state):
+    """Durable copy of every graded answer in Firestore `answers` (server-only collection).
+    Holds no browser-visible data; the session id is stored hashed."""
+    import hashlib
+
+    def sink(ch, graded):
+        site = (state.session(ch["session_id"]) or {}).get("site_key")
+        sess = hashlib.sha256(ch["session_id"].encode()).hexdigest()[:20]
+        now = datetime.now(timezone.utc).isoformat()
+        rows = [{"challenge_id": ch["challenge_id"], "session": sess, "site_key": site, "mode": ch["mode"],
+                 "task_id": g["task_id"], "kind": g["kind"], "holdout": bool(g["holdout"]), "choice": g["choice"],
+                 "correct": g["correct"], "counts_for_reliability": bool(g["counts_for_reliability"]),
+                 "elapsed_ms": int(g["elapsed_ms"]), "created_at": now} for g in graded]
+        def write():
+            try:
+                cloud.add("answers", rows)
+            except Exception:  # never fail the participant's submit; the instance copy still has it
+                log.exception("could not write %d answers to Firestore", len(rows))
+        threading.Thread(target=write, daemon=True).start()  # off the request path
+    return sink
+
+
+class _Stats:
+    """GET /v1/stats, cached for a minute. Cloud: counts from Firestore; local: from the service database."""
+
+    def __init__(self, cloud, state, store):
+        self.cloud, self.state, self.store = cloud, state, store
+        self._v, self._at, self._lock = None, 0.0, threading.Lock()
+
+    def get(self):
+        with self._lock:
+            if self._v is not None and time.monotonic() - self._at < 60:
+                return self._v
+            # Public: only the total. Holdout/kind counts would let a bot diff its own submissions (answer oracle).
+            try:
+                if self.cloud is not None:
+                    v = {"answers": self.cloud.count("answers")}
+                else:
+                    v = {"answers": self.state.one("SELECT COUNT(*) AS n FROM answers")["n"]}
+            except Exception:
+                log.exception("stats failed")
+                v = self._v or {"answers": None}  # keep the last good value
+            self._v, self._at = v, time.monotonic()
+            return v
+
+
 def create_app(settings: Settings | None = None, store: TaskStore | None = None) -> FastAPI:
     s = settings or load_settings()
     if s.dev and os.environ.get("K_SERVICE"):
         raise RuntimeError("SKYTASK_DEV=1 must never be set on Cloud Run (it exposes answer keys)")
+    cloud = None
+    if s.store == "cloud":
+        from .gcp import Client
+        cloud = Client(s.gcp_project, s.gcp_bucket, timeout=6, retries=2)  # serving path: fail fast
+    if store is None and cloud is not None:
+        from .taskstore import CloudTaskStore
+        store = CloudTaskStore(cloud, s.pool_refresh_s)
     if store is None:
         store = LocalTaskStore(s.generator_data_dir, s.pool_refresh_s)
         if not store.db_path.exists():
             raise SystemExit(f"Sky Task: generator database not found at {store.db_path}\n"
                              "Set generator_data_dir in service/settings.local.toml (see the README).")
     state = State(s.service_db)
+    answer_sink = _cloud_answer_sink(cloud, state) if cloud is not None else None
+    stats_cache = _Stats(cloud, state, store)
     pngs, session_locks = PngCache(), SessionLocks()
 
     app = FastAPI(title="Sky Task API", version="0.1.0")
@@ -222,7 +277,13 @@ def create_app(settings: Settings | None = None, store: TaskStore | None = None)
         result = {"recorded": True} if ch["mode"] == "none" else {"score": pct}
         if not state.record_submission(ch, graded, delta, result):
             raise _err(409, "already_submitted")
+        if answer_sink is not None:
+            answer_sink(ch, graded)
         return result
+
+    @app.get("/v1/stats")
+    def stats():
+        return stats_cache.get()
 
     if s.dev:
         @app.get("/v1/dev/challenge/{challenge_id}")

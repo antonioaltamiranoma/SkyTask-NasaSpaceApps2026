@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sky Task: classify</title>
+<meta name="description" content="Help spot moving objects in NASA SPHEREx infrared images, a few seconds at a time.">
+<link rel="icon" href="assets/sky-task-logo.svg">
+<link rel="stylesheet" href="assets/site.css">
+<script src="/widget/sky-task.js" defer></script>
+<style>
+  .cgrid { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 40px; align-items: start; }
+  @media (max-width: 820px) { .cgrid { grid-template-columns: minmax(0, 1fr); } }
+  .cgrid > * { min-width: 0; }
+  .tally { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 0 20px; }
+  .tally div { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-width: 150px; }
+  .tally b { display: block; font-size: 1.75rem; line-height: 1.1; }
+  .tally span { font-size: .8125rem; color: var(--muted); }
+  .how ol { padding-left: 1.2em; margin: 8px 0 16px; }
+  .how li { margin: 6px 0; }
+  .fine { font-size: .8125rem; color: var(--muted); }
+  #slot { min-height: 420px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="classify.html"><img src="assets/sky-task-logo.svg" alt="">Sky Task</a>
+  <nav aria-label="Pages">
+    <a href="classify.html" aria-current="page">Classify</a>
+    <a href="./">Sign-up form</a>
+    <a href="game.html">Game</a>
+    <a href="inspector.html">Inspector</a>
+  </nav>
+  <span class="api">API: <span data-api-label></span></span>
+</header>
+
+<main class="wrap">
+  <h1>Help find moving objects in NASA SPHEREx images</h1>
+  <p class="lede">NASA’s SPHEREx telescope maps the whole sky in infrared. Each task shows the same small patch of sky a few hours apart. Asteroids drift between the pictures; stars stay put. A few seconds per answer is all it takes.</p>
+
+  <div class="cgrid">
+    <div>
+      <div class="tally" aria-live="polite">
+        <div><b id="mine">0</b><span>your answers this visit</span></div>
+        <div><b id="all">–</b><span>answers from all volunteers</span></div>
+      </div>
+      <div id="slot"></div>
+    </div>
+    <div class="how">
+      <h2>How to answer</h2>
+      <ol>
+        <li>Watch the dot inside the ring while the pictures blink (or step through them with the arrows).</li>
+        <li>If the dot jumps to a new spot between pictures, choose <b>Moving</b>.</li>
+        <li>If it stays in the same place, choose <b>Not moving</b>, even if it gets brighter or fainter.</li>
+      </ol>
+      <p>Some tasks are known asteroids or known stars. They let us weigh everyone’s answers fairly, so take your time and go with what you see. Every answer is combined with other people’s into a consensus about each candidate.</p>
+      <p class="fine">Sky Task is a NASA Space Apps Challenge 2026 project, not a NASA website. Images: NASA SPHEREx via NASA/IPAC IRSA. Known asteroids: NASA/JPL Small-Body Identification API. We store your answers and their timing with a random session id; no account, name or email.</p>
+    </div>
+  </div>
+</main>
+
+<script src="assets/config.js"></script>
+<script>
+  (function () {
+    var slot = document.getElementById("slot"), mine = document.getElementById("mine"), all = document.getElementById("all");
+    var count = 0;
+    try { count = parseInt(sessionStorage.getItem("skytask-mine") || "0", 10) || 0; } catch (e) {}
+    mine.textContent = count;
+    function stats() {
+      fetch(window.SKYTASK_API + "/stats").then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (s) { if (s && typeof s.answers === "number") all.textContent = s.answers.toLocaleString(); })
+        .catch(function () {});
+    }
+    function next() {
+      var w = document.createElement("sky-task");
+      w.setAttribute("site-key", "demo");
+      w.setAttribute("count", "3");
+      w.setAttribute("result", "none");
+      w.setAttribute("api", window.SKYTASK_API);
+      w.addEventListener("sky-task-result", function () {
+        count += parseInt(w.getAttribute("count"), 10) || 0; mine.textContent = count;
+        try { sessionStorage.setItem("skytask-mine", String(count)); } catch (e) {}
+        setTimeout(function () { stats(); slot.replaceChildren(); next(); }, 1200);
+      });
+      w.addEventListener("sky-task-error", function (e) {
+        var d = (e && e.detail) || {}, msg = String(d.code || d.error || d.status || "");
+        var done = msg.indexOf("503") >= 0 || msg.indexOf("no_tasks") >= 0 || msg.indexOf("not_enough") >= 0;
+        var p = document.createElement("p");
+        p.className = "lede";
+        p.textContent = done
+          ? "You’ve seen every patch of sky we have ready right now. Thank you! New tasks arrive as our pipeline processes more SPHEREx images, so come back later."
+          : "Something went wrong reaching Sky Task. Please reload the page in a minute.";
+        setTimeout(function () { if (!slot.querySelector("p")) slot.appendChild(p); }, 400);
+      });
+      slot.appendChild(w);
+    }
+    next(); stats();
+  })();
+</script>
+</body>
+</html>

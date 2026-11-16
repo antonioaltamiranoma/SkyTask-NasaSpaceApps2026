@@ -38,6 +38,9 @@ class Settings:
     science_share: float = 0.5        # at most this share of a challenge is unsettled science (CLAUDE.md: <= 50%)
     recheck_rate: float = 0.05        # chance a settled science task is still served (re-check)
     dev: bool = False
+    store: str = "local"              # "local" (generator SQLite) or "cloud" (Firestore + private bucket)
+    gcp_project: str = ""
+    gcp_bucket: str = ""
 
 
 def _resolve(base: Path, p) -> Path:
@@ -70,6 +73,11 @@ def load_settings(path: str | os.PathLike | None = None) -> Settings:
         for k in ("challenge_ttl_s", "pool_refresh_s", "science_share", "recheck_rate"):
             if k in srv:
                 setattr(s, k, type(getattr(s, k))(srv[k]))
+        cloud = raw.get("cloud", {})
+        if cloud:
+            s.store = cloud.get("store", s.store)
+            s.gcp_project = cloud.get("project", "")
+            s.gcp_bucket = cloud.get("bucket", "")
         if "cors_origins" in raw.get("http", {}):
             s.cors_origins = list(raw["http"]["cors_origins"])
         if "site_keys" in raw:

@@ -120,3 +120,86 @@ class LocalTaskStore(TaskStore):
         return {"by_kind": [{"kind": r["kind"], "holdout": bool(r["holdout"]), "status": r["status"], "count": r["n"]}
                             for r in rows],
                 "fields": {"total": f_all, "with_active_tasks": f_act}}
+
+
+def task_to_doc(t: dict) -> dict:
+    """Server record -> Firestore document (JSON columns as strings: Firestore has no nested arrays)."""
+    d = {}
+    for k in POOL_COLS:
+        v = t.get(k)
+        if k in JSON_COLS:
+            v = json.dumps(v)
+        elif k == "holdout":
+            v = bool(v)
+        d[k] = v
+    return d
+
+
+def doc_to_task(d: dict) -> dict:
+    t = {k: d.get(k) for k in POOL_COLS}
+    for k in JSON_COLS:
+        if isinstance(t.get(k), str):
+            t[k] = json.loads(t[k])
+    t["holdout"] = bool(t.get("holdout"))
+    return t
+
+
+class CloudTaskStore(TaskStore):
+    """Tasks in Firestore (`tasks`, server-only: holds answer keys) + master strips in the private bucket.
+
+    The pool is re-read every `refresh_s` seconds, so tasks uploaded by the PC's sync script go live without a
+    redeploy. Master strips are cached in memory (they never change: a new strip gets a new task id)."""
+
+    def __init__(self, client, refresh_s: float = 60.0, cache_max: int = 2000):
+        self.c, self.refresh_s, self.cache_max = client, refresh_s, cache_max
+        self._lock = threading.Lock()
+        self._pool: list[dict] = []
+        self._by_id: dict[str, dict] = {}
+        self._loaded_at = 0.0
+        self._png: dict[str, bytes] = {}
+
+    def _refresh(self, force=False):
+        with self._lock:
+            if not force and self._loaded_at and time.monotonic() - self._loaded_at < self.refresh_s:
+                return
+            try:
+                docs = self.c.query("tasks", where={"status": "active"})
+            except Exception:  # keep serving the last good pool if Firestore hiccups
+                if self._loaded_at:
+                    self._loaded_at = time.monotonic() - self.refresh_s + 10
+                    return
+                raise
+            pool = [doc_to_task(d) for d in docs]
+            self._pool, self._by_id = pool, {t["task_id"]: t for t in pool}
+            self._loaded_at = time.monotonic()
+
+    def pool(self):
+        self._refresh()
+        return list(self._pool)
+
+    def get(self, task_id):
+        self._refresh()
+        t = self._by_id.get(task_id)
+        if t is None:  # retired since load: look it up directly (needed to grade older challenges)
+            d = self.c.get("tasks", task_id)
+            t = doc_to_task(d) if d else None
+        return t
+
+    def master_bytes(self, task):
+        key = task["master_path"].replace("\\", "/")
+        b = self._png.get(key)
+        if b is None:
+            b = self.c.get_object(key)
+            with self._lock:
+                if len(self._png) >= self.cache_max:
+                    self._png.pop(next(iter(self._png)))
+                self._png[key] = b
+        return b
+
+    def counts(self):
+        by = {}
+        for t in self.pool():
+            k = (t["kind"], bool(t["holdout"]))
+            by[k] = by.get(k, 0) + 1
+        return {"by_kind": [{"kind": k, "holdout": h, "status": "active", "count": n} for (k, h), n in sorted(by.items())],
+                "fields": {"with_active_tasks": len({t["field_id"] for t in self.pool()})}}

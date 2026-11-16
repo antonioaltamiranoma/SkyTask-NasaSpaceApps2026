@@ -1,13 +1,18 @@
 # Sky Task service - Cloud Run settings (no secrets here). Paths are relative to this file (/app/service).
+[cloud]
+store = "cloud"                                  # tasks from Firestore `tasks` + strips from the private bucket
+project = "sky-task-c4048"
+bucket = "sky-task-c4048-masters"
+
 [local]
-generator_data_dir = "../data"                   # task snapshot baked into the private image
-service_db = "/tmp/skytask_service.sqlite3"      # phase A: answers live in the instance (lost on restart)
+generator_data_dir = "../data"                   # unused with store = "cloud"
+service_db = "/tmp/skytask_service.sqlite3"      # live sessions/challenges only; answers also go to Firestore
 static_dir = "../explorer"
 widget_dir = "../widget"
 
 [serving]
 challenge_ttl_s = 600
-pool_refresh_s = 3600     # the snapshot doesn't change while the instance runs
+pool_refresh_s = 60       # re-read Firestore for new/retired tasks every minute
 science_share = 0.5
 recheck_rate = 0.05
 

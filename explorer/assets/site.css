@@ -52,3 +52,10 @@ h2 { font-size: 1.125rem; margin: 28px 0 8px; }
 .embed dt { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
 .embed dd { margin: 0; color: var(--muted); }
 .fine { font-size: .8125rem; color: var(--muted); }
+.embed .ref-wrap { overflow-x: auto; margin-top: 10px; }
+.embed table.ref { border-collapse: collapse; width: 100%; font-size: .875rem; min-width: 560px; }
+.embed table.ref caption { text-align: left; font-weight: 650; padding: 0 0 6px; }
+.embed table.ref th, .embed table.ref td { text-align: left; vertical-align: top; padding: 8px 10px; border-top: 1px solid var(--line); }
+.embed table.ref th { font-size: .8125rem; color: var(--muted); font-weight: 600; }
+.embed table.ref td:first-child { white-space: nowrap; }
+.embed code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .92em; }

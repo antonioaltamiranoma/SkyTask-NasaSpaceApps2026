@@ -8,7 +8,7 @@ Somos un equipo de Quito que trabaja en el desafío Planet X and SPHEREx. Querem
 
 ## Try it
 
-- **Classify SPHEREx images (citizen science):** https://sky-task-c4048.web.app/classify.html
+- **Classify SPHEREx images (citizen science):** https://sky-task-c4048.web.app/classify.html, with **live results**: answers, volunteers, and how often the crowd is right on hidden check tasks (known asteroids and stars), updated every 10 minutes
 - The widget inside a sign-up form (CAPTCHA-style box): https://sky-task-c4048.web.app/
 - The widget inside a game: https://sky-task-c4048.web.app/game.html
 - What the browser receives (public data only): https://sky-task-c4048.web.app/inspector.html

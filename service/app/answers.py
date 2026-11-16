@@ -74,3 +74,23 @@ class AnswerWriter:
             else:
                 time.sleep(self.backoff[min(self._fails, len(self.backoff) - 1)])
                 self._fails += 1
+
+
+def summarize(rows: list[dict], now: datetime, delay_s: int = 600, min_holdout: int = 50) -> dict:
+    """Public results from stored answers. Only answers older than `delay_s` count, accuracy is a whole percent
+    and appears only after `min_holdout` holdout answers: together with the 10-minute refresh this keeps a client
+    from diffing the number to learn which of its own tasks were controls."""
+    cutoff = now.timestamp() - delay_s
+    old = []
+    for r in rows:
+        try:
+            ts = datetime.fromisoformat(str(r.get("created_at"))).timestamp()
+        except ValueError:
+            continue
+        if ts <= cutoff:
+            old.append(r)
+    hold = [r for r in old if r.get("holdout") and r.get("correct") is not None]
+    acc = round(100 * sum(1 for r in hold if r["correct"]) / len(hold)) if len(hold) >= min_holdout else None
+    return {"volunteers": len({r.get("session") for r in rows if r.get("session")}),
+            "holdout_accuracy_pct": acc,
+            "results_updated_at": now.replace(microsecond=0).isoformat().replace("+00:00", "Z")}

@@ -47,6 +47,12 @@
       <div id="slot"></div>
     </div>
     <div class="how">
+      <h2>Live results</h2>
+      <div class="tally">
+        <div><b id="vols">–</b><span>volunteers so far</span></div>
+        <div><b id="acc">–</b><span>correct on hidden check tasks</span></div>
+      </div>
+      <p class="fine" id="accnote">Some tasks are known asteroids and stars that nobody is told about. How often the crowd gets them right shows how far its answers can be trusted. Updated every 10 minutes; shown once 50 check answers are in.</p>
       <h2>How to answer</h2>
       <ol>
         <li>Watch the dot inside the ring while the pictures blink (or step through them with the arrows).</li>
@@ -68,7 +74,12 @@
     mine.textContent = count;
     function stats() {
       fetch(window.SKYTASK_API + "/stats").then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (s) { if (s && typeof s.answers === "number") all.textContent = s.answers.toLocaleString(); })
+        .then(function (s) {
+          if (!s) return;
+          if (typeof s.answers === "number") all.textContent = s.answers.toLocaleString();
+          if (typeof s.volunteers === "number") document.getElementById("vols").textContent = s.volunteers.toLocaleString();
+          document.getElementById("acc").textContent = typeof s.holdout_accuracy_pct === "number" ? s.holdout_accuracy_pct + "%" : "soon";
+        })
         .catch(function () {});
     }
     function next() {
@@ -94,7 +105,7 @@
       });
       slot.appendChild(w);
     }
-    next(); stats();
+    next(); stats(); setInterval(stats, 60000);
   })();
 </script>
 </body>
